@@ -16,9 +16,10 @@
 
 use super::ranking::RankedDoc;
 use crate::sources::Document;
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 /// Top-K candidates to enrich. Higher K means more API calls (slower) but
 /// more graph signal. 30 is a reasonable balance for typical research runs.
@@ -70,11 +71,26 @@ fn doi_from(doc: &Document) -> Option<String> {
         .or_else(|| super::dedup::extract_doi(&doc.url))
 }
 
+/// Process-wide memoization of S2 fetches keyed by `(endpoint_kind, doi)`.
+/// Refs/cites are immutable once published (papers don't un-cite each other),
+/// so any later query that looks at the same DOI gets a free hit. Bounded by
+/// unique DOIs ever queried this process — practically a few hundred.
+static FETCH_CACHE: Lazy<RwLock<HashMap<(&'static str, String), Vec<String>>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
 async fn fetch_dois(
     client: &reqwest::Client,
     template: &str,
     paper_doi: &str,
 ) -> Vec<String> {
+    let kind = if template == REFERENCES_URL { "refs" } else { "cites" };
+    let key = (kind, paper_doi.to_string());
+    if let Ok(g) = FETCH_CACHE.read() {
+        if let Some(hit) = g.get(&key) {
+            return hit.clone();
+        }
+    }
+
     let endpoint = template.replace("{}", &format!("DOI:{}", paper_doi));
     let resp = client
         .get(&endpoint)
@@ -91,7 +107,7 @@ async fn fetch_dois(
     let Ok(parsed) = resp.json::<RefsResp>().await else {
         return Vec::new();
     };
-    parsed
+    let dois: Vec<String> = parsed
         .data
         .into_iter()
         .filter_map(|e| {
@@ -99,7 +115,11 @@ async fn fetch_dois(
             p.external_ids?.doi
         })
         .map(|d| d.to_lowercase())
-        .collect()
+        .collect();
+    if let Ok(mut g) = FETCH_CACHE.write() {
+        g.insert(key, dois.clone());
+    }
+    dois
 }
 
 /// Apply a citation-graph boost to the top K of `ranked` and return the
@@ -127,7 +147,9 @@ pub async fn enrich_with_citation_graph(
     }
 
     // Concurrently fetch references + citations for each top-K candidate
-    // that has a DOI. Yields (candidate_index, related_dois).
+    // that has a DOI. Within each task the two endpoint calls run in
+    // parallel via tokio::join so an N-task fanout becomes 2N concurrent
+    // HTTP requests instead of 2 serial requests × N tasks.
     let mut tasks: tokio::task::JoinSet<(usize, Vec<String>)> = tokio::task::JoinSet::new();
     for &i in &top_indices {
         let Some(my_doi) = doi_from(&ranked[i].doc.doc) else {
@@ -138,9 +160,12 @@ pub async fn enrich_with_citation_graph(
         let doi_r = my_doi.clone();
         let doi_c = my_doi.clone();
         tasks.spawn(async move {
-            let mut combined = fetch_dois(&client_r, REFERENCES_URL, &doi_r).await;
-            combined.extend(fetch_dois(&client_c, CITATIONS_URL, &doi_c).await);
-            (i, combined)
+            let (mut refs, cites) = tokio::join!(
+                fetch_dois(&client_r, REFERENCES_URL, &doi_r),
+                fetch_dois(&client_c, CITATIONS_URL, &doi_c),
+            );
+            refs.extend(cites);
+            (i, refs)
         });
     }
 

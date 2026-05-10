@@ -401,24 +401,42 @@ pub async fn run_pipeline(
                     },
                 );
 
-                for idx in borderline {
-                    if cancel.is_cancelled() {
-                        break;
-                    }
-                    let prompt = crate::ai::llm::filter_prompt(
-                        &req.query,
-                        &ranked[idx].doc.doc.title,
-                        ranked[idx].doc.doc.abstract_.as_deref().unwrap_or(""),
-                    );
-                    let llm_clone = llm.clone();
-                    let keep = tokio::task::spawn_blocking(move || {
-                        let guard = llm_clone.blocking_lock();
-                        guard.yes_no(&prompt).unwrap_or(true)
+                // Build all prompts up-front, then pay the spawn_blocking +
+                // mutex acquisition cost once. With ~10–20 borderline
+                // candidates this collapses ~20 thread switches and lock
+                // cycles into one. Cancellation is checked per-prompt
+                // *inside* the blocking thread.
+                let prompts: Vec<String> = borderline
+                    .iter()
+                    .map(|&idx| {
+                        crate::ai::llm::filter_prompt(
+                            &req.query,
+                            &ranked[idx].doc.doc.title,
+                            ranked[idx].doc.doc.abstract_.as_deref().unwrap_or(""),
+                        )
                     })
-                    .await
-                    .unwrap_or(true);
-                    if !keep {
-                        ranked[idx].reject_reason = Some("LLM judged off-topic".to_string());
+                    .collect();
+                let llm_for_task = llm.clone();
+                let cancel_for_task = cancel.clone();
+                let keeps = tokio::task::spawn_blocking(move || {
+                    let guard = llm_for_task.blocking_lock();
+                    let mut out = Vec::with_capacity(prompts.len());
+                    for p in &prompts {
+                        if cancel_for_task.is_cancelled() {
+                            // Conservative: anything we didn't get to is kept.
+                            out.extend(std::iter::repeat(true).take(prompts.len() - out.len()));
+                            break;
+                        }
+                        out.push(guard.yes_no(p).unwrap_or(true));
+                    }
+                    out
+                })
+                .await
+                .unwrap_or_else(|_| vec![true; borderline.len()]);
+
+                for (i, idx) in borderline.iter().enumerate() {
+                    if !keeps.get(i).copied().unwrap_or(true) {
+                        ranked[*idx].reject_reason = Some("LLM judged off-topic".to_string());
                     }
                 }
             }
@@ -484,17 +502,26 @@ pub async fn run_pipeline(
         .map(|r| r.doc.doc)
         .collect();
 
-    // -------- Phase 2: parallel downloads --------
+    // -------- Phase 2: parallel downloads + parallel extraction --------
+    //
+    // Two separate semaphores so download (network-bound) and extract
+    // (CPU-bound) don't serialize each other. Previously a single semaphore
+    // gated the whole task lifetime — once a download finished, the same
+    // permit was held through extraction, blocking the next download from
+    // starting. Now the download permit drops the moment bytes are on disk,
+    // and a smaller extract permit (CPU count) gates the heavy text parsing.
     let total = candidates.len();
     let counters = Arc::new(tokio::sync::Mutex::new((0usize, 0usize))); // (done, failed)
-    let semaphore = Arc::new(Semaphore::new(req.concurrency.clamp(1, 32)));
+    let download_sem = Arc::new(Semaphore::new(req.concurrency.clamp(1, 32)));
+    let extract_sem = Arc::new(Semaphore::new(num_cpus::get().clamp(1, 8)));
 
     let mut handles = Vec::with_capacity(candidates.len());
     for doc in candidates {
         let app = app.clone();
         let client = client.clone();
         let cancel = cancel.clone();
-        let semaphore = semaphore.clone();
+        let download_sem = download_sem.clone();
+        let extract_sem = extract_sem.clone();
         let counters = counters.clone();
         let folder = folder.clone();
         let db_path = db_path.clone();
@@ -502,7 +529,7 @@ pub async fn run_pipeline(
         let extract_flag = req.extract;
 
         let handle = tokio::spawn(async move {
-            let _permit = match semaphore.acquire_owned().await {
+            let download_permit = match download_sem.acquire_owned().await {
                 Ok(p) => p,
                 Err(_) => return,
             };
@@ -558,10 +585,19 @@ pub async fn run_pipeline(
                         local_path: &path.to_string_lossy(),
                         bytes,
                     });
+                    // Release the download permit before extraction so the
+                    // next download can start. Extract uses its own
+                    // CPU-count semaphore.
+                    drop(download_permit);
+
                     let mut text_path: Option<String> = None;
                     let mut extract_error: Option<String> = None;
                     if extract_flag {
                         let extract_path = path.clone();
+                        let _extract_permit = match extract_sem.clone().acquire_owned().await {
+                            Ok(p) => p,
+                            Err(_) => return,
+                        };
                         let extract_res =
                             match tokio::task::spawn_blocking(move || extract_text(&extract_path))
                                 .await

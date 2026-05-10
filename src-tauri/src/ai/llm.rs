@@ -131,14 +131,32 @@ impl LlmModel {
     /// anything else also → false (conservative).
     pub fn yes_no(&self, prompt: &str) -> anyhow::Result<bool> {
         let raw = self.generate(prompt, 6)?;
-        let first = raw
-            .trim()
-            .split(|c: char| !c.is_alphabetic())
-            .next()
-            .unwrap_or("")
-            .to_lowercase();
-        Ok(matches!(first.as_str(), "y" | "yes" | "true"))
+        Ok(parse_yes(&raw))
     }
+
+    /// Batch variant — runs `yes_no` over many prompts in one call so the
+    /// caller pays the spawn_blocking + mutex acquisition cost once instead
+    /// of N times. The decode itself is still serial inside the model
+    /// (llama.cpp contexts aren't shareable across calls), but the
+    /// orchestration overhead drops to O(1).
+    ///
+    /// On any individual error we conservatively keep the candidate (true).
+    pub fn batch_yes_no(&self, prompts: &[String]) -> Vec<bool> {
+        prompts
+            .iter()
+            .map(|p| self.yes_no(p).unwrap_or(true))
+            .collect()
+    }
+}
+
+fn parse_yes(raw: &str) -> bool {
+    let first = raw
+        .trim()
+        .split(|c: char| !c.is_alphabetic())
+        .next()
+        .unwrap_or("")
+        .to_lowercase();
+    matches!(first.as_str(), "y" | "yes" | "true")
 }
 
 // =============================================================================
