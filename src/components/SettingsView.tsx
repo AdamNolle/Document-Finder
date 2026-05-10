@@ -155,9 +155,9 @@ export default function SettingsView() {
         </section>
 
         {/* Search quality — collapsed from 4 confusing toggles to one pill */}
-        <section class="material-feltgreen p-5">
-          <h2 class="mb-1 text-sm font-semibold text-embossed-on-dark">Search Quality</h2>
-          <p class="mb-4 text-xs leading-relaxed" style={{ color: "oklch(0.92 0.04 148)" }}>
+        <section class="material-linen p-5">
+          <h2 class="mb-1 text-sm font-semibold text-embossed">Search Quality</h2>
+          <p class="mb-4 text-xs leading-relaxed text-[var(--color-foreground-muted)]">
             How hard the app works to rank your results. The keyword baseline
             (TF-IDF, RRF, authority) always runs.
           </p>
@@ -185,7 +185,7 @@ export default function SettingsView() {
             />
           </div>
 
-          <p class="mb-4 text-[11px] leading-relaxed" style={{ color: "oklch(0.92 0.04 148)" }}>
+          <p class="mb-4 text-[11px] leading-relaxed text-[var(--color-foreground-muted)]">
             {settings.quality === "fast" && "Keyword scoring across all sources. Returns immediately. No models needed."}
             {settings.quality === "balanced" && "Adds semantic reranking via the embedding model — top 100 results re-scored by query meaning, not just keyword overlap."}
             {settings.quality === "thorough" && "Full AI pipeline: LLM generates extra sub-queries before discovery, semantic reranking, then LLM borderline-filter pass on the middle band. Several seconds slower."}
@@ -327,16 +327,9 @@ function QualityTab(props: {
   active: boolean;
   disabled?: boolean;
 }) {
-  // Pill sits on a white surface inside the dark felt-green section, so
-  // we override the inherited light-green text color with the standard
-  // foreground colors. Active uses the indigo primary on both lines for
-  // a clear "this one is selected" cue.
-  const labelColor = () =>
-    props.active ? "var(--color-primary)" : "var(--color-foreground)";
-  const captionColor = () =>
-    props.active
-      ? "color-mix(in oklch, var(--color-primary) 75%, transparent)"
-      : "var(--color-foreground-muted)";
+  // pill-toggle's class default handles inactive coloring; only active
+  // overrides to indigo primary (label full strength, caption slightly
+  // softer).
   return (
     <button
       onClick={() => {
@@ -348,10 +341,20 @@ function QualityTab(props: {
       class="pill-toggle flex-1 px-3 py-2 text-center"
       classList={{ "is-active": props.active, "opacity-55 cursor-not-allowed": !!props.disabled }}
     >
-      <div class="text-[12px] font-semibold leading-tight" style={{ color: labelColor() }}>
+      <div
+        class="text-[12px] font-semibold leading-tight"
+        style={props.active ? { color: "var(--color-primary)" } : {}}
+      >
         {props.label}
       </div>
-      <div class="mt-0.5 text-[10px] leading-tight" style={{ color: captionColor() }}>
+      <div
+        class="mt-0.5 text-[10px] leading-tight"
+        style={
+          props.active
+            ? { color: "color-mix(in oklch, var(--color-primary) 75%, transparent)" }
+            : { color: "var(--color-foreground-muted)" }
+        }
+      >
         {props.caption}
       </div>
     </button>
