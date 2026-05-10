@@ -74,28 +74,71 @@ pub async fn download(
         let _ = tokio::fs::remove_file(&final_path).await;
     }
 
+    // Disk-space precheck before we commit to writing 2 GB. Subtract anything
+    // already on disk in the partial so resume of a 90%-done file doesn't
+    // false-positive on a near-full disk.
+    let already_partial = tokio::fs::metadata(&partial_path)
+        .await
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let still_needed = entry.approx_bytes.saturating_sub(already_partial);
+    if let Some(parent) = partial_path.parent() {
+        if let Err(msg) = crate::ai::storage::ensure_free_space(parent, still_needed) {
+            emit_status(&app, entry.id, "failed", Some(msg.clone()));
+            return Err(anyhow::anyhow!(msg));
+        }
+    }
+
     emit_status(&app, entry.id, "downloading", None);
 
     // Resume offset: where the partial file leaves off, if any.
-    let mut start = match tokio::fs::metadata(&partial_path).await {
-        Ok(m) => m.len(),
-        Err(_) => 0,
-    };
+    let mut start = already_partial;
 
     let url = entry.download_url();
     let mut req = client.get(&url);
     if start > 0 {
         req = req.header("Range", format!("bytes={}-", start));
     }
-    let resp = req.send().await?;
+    let resp = match req.send().await {
+        Ok(r) => r,
+        Err(e) => {
+            // Distinguish connect/DNS errors from generic transport errors so
+            // the user sees something they can act on.
+            let detail = if e.is_connect() {
+                format!("could not connect to huggingface.co: {}", e)
+            } else if e.is_timeout() {
+                format!("connection timed out: {}", e)
+            } else {
+                format!("network error: {}", e)
+            };
+            emit_status(&app, entry.id, "failed", Some(detail.clone()));
+            return Err(anyhow::anyhow!(detail));
+        }
+    };
 
     let status = resp.status();
     if !status.is_success() && status.as_u16() != 206 {
-        return Err(anyhow::anyhow!(
-            "download {} returned HTTP {}",
-            url,
-            status
-        ));
+        let code = status.as_u16();
+        let detail = match code {
+            401 => format!(
+                "HuggingFace returned 401 Unauthorized for {}/{} — this model may require accepting a license. Visit https://huggingface.co/{} in a browser, accept terms, then retry.",
+                entry.hf_repo, entry.hf_filename, entry.hf_repo
+            ),
+            403 => format!(
+                "HuggingFace returned 403 Forbidden for {}/{} — the file may be gated or blocked in your region. Try a different model.",
+                entry.hf_repo, entry.hf_filename
+            ),
+            404 => format!(
+                "HuggingFace returned 404 — model file moved or removed: {}/{}. Update Document-Finder for a fresh registry.",
+                entry.hf_repo, entry.hf_filename
+            ),
+            429 => "HuggingFace rate-limited the download (429). Wait a minute and retry.".to_string(),
+            451 => "Download blocked for legal reasons (451) in your region.".to_string(),
+            500..=599 => format!("HuggingFace server error {} — retry in a moment.", code),
+            _ => format!("HTTP {} from {}", code, url),
+        };
+        emit_status(&app, entry.id, "failed", Some(detail.clone()));
+        return Err(anyhow::anyhow!(detail));
     }
 
     // Compute total bytes from Content-Length (fallback: registry estimate).
@@ -130,8 +173,22 @@ pub async fn download(
             emit_status(&app, entry.id, "cancelled", None);
             return Err(anyhow::anyhow!("cancelled"));
         }
-        let chunk = chunk_res?;
-        file.write_all(&chunk).await?;
+        let chunk = match chunk_res {
+            Ok(c) => c,
+            Err(e) => {
+                let detail = format!(
+                    "transfer interrupted at {} of {} bytes: {}",
+                    downloaded, total, e
+                );
+                emit_status(&app, entry.id, "failed", Some(detail.clone()));
+                return Err(anyhow::anyhow!(detail));
+            }
+        };
+        if let Err(e) = file.write_all(&chunk).await {
+            let detail = format!("disk write failed: {} (free space may have run out)", e);
+            emit_status(&app, entry.id, "failed", Some(detail.clone()));
+            return Err(anyhow::anyhow!(detail));
+        }
         downloaded += chunk.len() as u64;
 
         // Throttle progress events to ~10/sec.

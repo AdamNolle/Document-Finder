@@ -11,7 +11,8 @@ export default function LibraryView() {
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [exportingPath, setExportingPath] = createSignal<string | null>(null);
-  const [exportError, setExportError] = createSignal<string | null>(null);
+  const [deletingPath, setDeletingPath] = createSignal<string | null>(null);
+  const [actionError, setActionError] = createSignal<string | null>(null);
   const [loadTick, setLoadTick] = createSignal(0);
 
   createEffect(() => {
@@ -44,7 +45,7 @@ export default function LibraryView() {
   });
 
   async function handleExport(lib: LibraryInfo) {
-    setExportError(null);
+    setActionError(null);
     const dest = await save({
       defaultPath: `${lib.name}.zip`,
       filters: [{ name: "ZIP archive", extensions: ["zip"] }],
@@ -55,27 +56,32 @@ export default function LibraryView() {
       const result = await api.exportLibraryZip(lib.path, dest);
       await api.revealInFinder(result.dest);
     } catch (e) {
-      setExportError(String(e));
+      setActionError(`Export failed: ${String(e)}`);
     } finally {
       setExportingPath(null);
     }
   }
 
   async function handleDelete(lib: LibraryInfo) {
-    setExportError(null);
+    setActionError(null);
     const ok = await ask(
       `Delete library "${lib.query ?? lib.name}"? This permanently removes ${lib.n_docs} document${lib.n_docs === 1 ? "" : "s"} and ${formatBytes(lib.size_bytes)} from disk. This cannot be undone.`,
       { title: "Delete Library", kind: "warning" }
     );
     if (!ok) return;
+    // If the active library is the one being deleted, clear it first so the
+    // SQLite handle held by views drops before the directory disappears.
+    if (uiStore.activeLibrary?.path === lib.path) {
+      uiStore.setActiveLibrary(null);
+    }
+    setDeletingPath(lib.path);
     try {
       await api.deleteLibrary(lib.path);
-      if (uiStore.activeLibrary?.path === lib.path) {
-        uiStore.setActiveLibrary(null);
-      }
       setLoadTick((n) => n + 1);
     } catch (e) {
-      setExportError(String(e));
+      setActionError(`Delete failed: ${String(e)}`);
+    } finally {
+      setDeletingPath(null);
     }
   }
 
@@ -96,12 +102,12 @@ export default function LibraryView() {
       </div>
 
       <div class="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
-        {/* Export error */}
-        <Show when={exportError()}>
+        {/* Action error (export or delete) */}
+        <Show when={actionError()}>
           <div class="surface-raised-sm flex items-start justify-between gap-2 p-3 text-sm text-[var(--color-destructive)]">
-            <span>Export failed: {exportError()}</span>
+            <span class="break-words">{actionError()}</span>
             <button
-              onClick={() => setExportError(null)}
+              onClick={() => setActionError(null)}
               aria-label="Dismiss"
               class="btn-tactile shrink-0 p-1"
             >
@@ -154,6 +160,8 @@ export default function LibraryView() {
               {(lib) => {
                 const isActive = () => uiStore.activeLibrary?.path === lib.path;
                 const isExporting = () => exportingPath() === lib.path;
+                const isDeleting = () => deletingPath() === lib.path;
+                const isBusy = () => isExporting() || isDeleting();
                 return (
                   <div
                     role="button"
@@ -162,6 +170,7 @@ export default function LibraryView() {
                     classList={{
                       "surface-pressed": isActive(),
                       "surface-raised": !isActive(),
+                      "opacity-60 pointer-events-none": isDeleting(),
                     }}
                     onClick={() => uiStore.setActiveLibrary(lib)}
                     onKeyDown={(e) => handleCardKeyDown(e, lib)}
@@ -179,7 +188,7 @@ export default function LibraryView() {
                     <div class="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleExport(lib)}
-                        disabled={isExporting()}
+                        disabled={isBusy()}
                         class="btn-tactile flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
                       >
                         <Show when={isExporting()} fallback={<Archive size={12} />}>
@@ -189,6 +198,7 @@ export default function LibraryView() {
                       </button>
                       <button
                         onClick={() => api.revealInFinder(lib.path)}
+                        disabled={isBusy()}
                         class="btn-tactile flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
                       >
                         <FolderOpen size={12} />
@@ -196,11 +206,14 @@ export default function LibraryView() {
                       </button>
                       <button
                         onClick={() => handleDelete(lib)}
+                        disabled={isBusy()}
                         title="Delete library"
                         class="btn-tactile ml-auto flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium"
                         style={{ color: "var(--color-destructive)" }}
                       >
-                        <Trash2 size={12} />
+                        <Show when={isDeleting()} fallback={<Trash2 size={12} />}>
+                          <Loader2 size={12} class="animate-spin" />
+                        </Show>
                       </button>
                     </div>
                   </div>

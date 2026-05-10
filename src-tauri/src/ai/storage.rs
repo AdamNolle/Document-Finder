@@ -43,3 +43,20 @@ pub fn partial_file(app: &AppHandle, entry: &ModelEntry) -> anyhow::Result<PathB
 pub fn on_disk_bytes(path: &Path) -> u64 {
     std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
 }
+
+/// Check that the filesystem holding `target_dir` has at least `needed_bytes`
+/// of free space, with a 10% safety margin. Returns Err with a human-readable
+/// message if the check fails or the FS info can't be queried.
+pub fn ensure_free_space(target_dir: &Path, needed_bytes: u64) -> Result<(), String> {
+    let available = fs2::available_space(target_dir)
+        .map_err(|e| format!("could not query free space on {}: {}", target_dir.display(), e))?;
+    let required = needed_bytes.saturating_add(needed_bytes / 10); // +10% margin
+    if available < required {
+        return Err(format!(
+            "insufficient disk space: need ~{:.1} GB free, have {:.1} GB",
+            required as f64 / 1_000_000_000.0,
+            available as f64 / 1_000_000_000.0
+        ));
+    }
+    Ok(())
+}
