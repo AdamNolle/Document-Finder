@@ -801,20 +801,51 @@ pub async fn delete_model(
 /// `export_library_zip` — the path must canonicalize to something inside the
 /// user's Documents directory, so a malicious or misconfigured caller can't
 /// rm-rf arbitrary host paths.
+///
+/// Surfaces the concrete reason for any failure (path doesn't resolve, lives
+/// outside Documents, busy file handle, permission denied) so the UI can show
+/// the user what to fix instead of a generic "delete failed".
 #[tauri::command]
 pub async fn delete_library(path: String) -> Result<(), String> {
-    let p = PathBuf::from(&path)
-        .canonicalize()
-        .map_err(|e| format!("invalid path: {}", e))?;
+    let raw = PathBuf::from(&path);
+    let p = raw.canonicalize().map_err(|e| {
+        let msg = format!(
+            "could not resolve library path '{}': {}. The folder may have already been moved or deleted.",
+            raw.display(),
+            e
+        );
+        tracing::warn!("delete_library: {}", msg);
+        msg
+    })?;
     if !p.is_dir() {
-        return Err("not a folder".into());
+        let msg = format!("'{}' is not a folder — refusing to delete.", p.display());
+        tracing::warn!("delete_library: {}", msg);
+        return Err(msg);
     }
-    let docs = dirs::document_dir().ok_or("cannot resolve Documents directory")?;
+    let docs = dirs::document_dir().ok_or_else(|| {
+        let msg = "cannot resolve your Documents directory — delete refused for safety.".to_string();
+        tracing::warn!("delete_library: {}", msg);
+        msg
+    })?;
     if !p.starts_with(&docs) {
-        return Err("library must be inside your Documents directory".into());
+        let msg = format!(
+            "library must live inside Documents ({}); '{}' is outside.",
+            docs.display(),
+            p.display()
+        );
+        tracing::warn!("delete_library: {}", msg);
+        return Err(msg);
     }
-    tokio::fs::remove_dir_all(&p)
-        .await
-        .map_err(|e| format!("delete failed: {}", e))?;
+    tokio::fs::remove_dir_all(&p).await.map_err(|e| {
+        let kind_hint = match e.kind() {
+            std::io::ErrorKind::PermissionDenied => " (permission denied — close any app that has files in this folder open)",
+            std::io::ErrorKind::NotFound => " (folder vanished mid-delete)",
+            _ => "",
+        };
+        let msg = format!("delete failed: {}{}", e, kind_hint);
+        tracing::warn!("delete_library: {} (path={})", msg, p.display());
+        msg
+    })?;
+    tracing::info!("delete_library: removed {}", p.display());
     Ok(())
 }
