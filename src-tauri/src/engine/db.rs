@@ -36,6 +36,23 @@ pub fn init_db(path: &Path) -> Result<Connection> {
         [],
     )?;
 
+    // Indexes for the queries that actually run hot:
+    //   - `SELECT COUNT(*) FROM documents WHERE run_id = ?` (library list)
+    //     would full-scan the documents table without an index.
+    //   - `ORDER BY r.created_at DESC LIMIT 1` (latest-run lookup) gets
+    //     an index too so it scales when the runs table grows past a few
+    //     hundred entries.
+    // The UNIQUE constraint on documents.url already creates an implicit
+    // index, so URL lookups during dedup are already fast.
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_documents_run_id ON documents(run_id)",
+        [],
+    )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_runs_created_at ON runs(created_at DESC)",
+        [],
+    )?;
+
     Ok(conn)
 }
 
