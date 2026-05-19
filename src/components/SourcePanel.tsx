@@ -1,6 +1,8 @@
-import { For, Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
+import { Star } from "lucide-solid";
 import { settings, setSettings, saveSettings, toggleSource } from "@/stores/settings";
 import { runStore } from "@/stores/run";
+import { sourceStats, formatCount } from "@/stores/source_stats";
 import { ALL_SOURCES, SOURCE_LABELS, SOURCE_DESCRIPTIONS, type SourceId } from "@/lib/utils";
 
 /// 2-column rich-row source grid.
@@ -9,16 +11,32 @@ import { ALL_SOURCES, SOURCE_LABELS, SOURCE_DESCRIPTIONS, type SourceId } from "
 /// source's display name + monospace id, a one-line description, and on the
 /// right either:
 ///   - the live status pill during a run (`scanning…` / `+N hits` / `error`)
-///   - the source's enabled/disabled state when idle
+///   - the source's lifetime saved-count when idle (so the user can see
+///     which platforms have actually been productive for their queries)
 ///
-/// The 7-run histogram bars from the design prototype are deferred until
-/// run-history persistence lands; for v3.1 we leave that slot blank when
-/// not live.
+/// A small star marks the most-saved source across all time — a low-noise
+/// "you've used this one a lot" hint that helps newcomers see where their
+/// queries actually land hits.
 export default function SourcePanel() {
   const enabledCount = () => settings.selectedSources.length;
   const total = () => ALL_SOURCES.length;
   const isRunning = () => runStore.state.running;
   const statusFor = (id: SourceId) => runStore.state.sourceStatus[id];
+
+  // ID of the source with the highest lifetime saved count (used for the
+  // star marker). Recomputed reactively as stats accumulate.
+  const topSource = createMemo<SourceId | null>(() => {
+    let best: SourceId | null = null;
+    let bestSaved = 0;
+    for (const id of ALL_SOURCES) {
+      const s = sourceStats.get(id);
+      if (s.saved > bestSaved) {
+        bestSaved = s.saved;
+        best = id;
+      }
+    }
+    return best;
+  });
 
   const enableAll = () => {
     setSettings("selectedSources", [...ALL_SOURCES] as SourceId[]);
@@ -42,7 +60,9 @@ export default function SourcePanel() {
         <strong>
           {enabledCount()} of {total()}
         </strong>
-        <span>enabled · toggle which open-access platforms to fan the query out to</span>
+        <span>
+          enabled · the badge shows lifetime saved-count to help you pick the productive ones
+        </span>
       </div>
 
       <div class="df-srcpanel-grid">
@@ -78,11 +98,33 @@ export default function SourcePanel() {
                   <div class="df-srcrow-name">
                     <span>{SOURCE_LABELS[id]}</span>
                     <span class="src-id">{id}</span>
+                    <Show when={topSource() === id}>
+                      <Star
+                        size={11}
+                        style={{ color: "var(--accent)", "margin-left": "2px" }}
+                        aria-label="Your most-productive source"
+                      />
+                    </Show>
                   </div>
                   <div class="df-srcrow-desc">{SOURCE_DESCRIPTIONS[id] ?? ""}</div>
                 </div>
                 <div class="df-srcrow-meta">
-                  <Show when={isRunning() && live()}>
+                  <Show
+                    when={isRunning() && live()}
+                    fallback={
+                      <Show when={sourceStats.get(id).saved > 0}>
+                        <span
+                          class="df-srcrow-stat"
+                          title={`Lifetime: ${sourceStats.get(id).saved} saved · ${sourceStats.get(id).hits} hits · ${sourceStats.get(id).runs} runs · ${sourceStats.get(id).failed} failed`}
+                        >
+                          <span class="df-srcrow-stat-num">
+                            {formatCount(sourceStats.get(id).saved)}
+                          </span>
+                          <span class="df-srcrow-stat-label">saved</span>
+                        </span>
+                      </Show>
+                    }
+                  >
                     <span
                       class="df-srcrow-status"
                       classList={{

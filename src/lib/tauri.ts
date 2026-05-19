@@ -65,4 +65,8 @@ export const api = {
   runLogInfo: () => invoke<LogInfo>("run_log_info"),
   runLogTail: (max?: number) => invoke<unknown[]>("run_log_tail", max != null ? { max } : {}),
   setupSearXNG: () => invoke<string>("setup_searxng"),
+  /// Permanently delete a library folder. The Rust side gates this to
+  /// paths under the user's library root (see commands::delete_library)
+  /// so a renderer-side bug can't rm-rf arbitrary host paths.
+  deleteLibrary: (path: string) => invoke<void>("delete_library", { path }),
 };
