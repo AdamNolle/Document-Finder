@@ -5,6 +5,7 @@ pub mod doaj;
 pub mod duckduckgo;
 pub mod gutenberg;
 pub mod internet_archive;
+pub mod local_searxng_source;
 pub mod marginalia_html;
 pub mod meta_search;
 pub mod mojeek_html;
@@ -30,6 +31,9 @@ pub const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Ap
 
 /// All known source ids. `meta_search` is the recommended zero-config web
 /// backend; it fans out to the six individual web scrapers internally.
+/// `searxng` hits the embedded SearXNG-compatible server (see
+/// `engine::local_searxng`), or a custom `instance_url` if the user
+/// supplied one in SettingsView.
 pub const SOURCE_IDS: &[&str] = &[
     "arxiv",
     "openalex",
@@ -38,6 +42,7 @@ pub const SOURCE_IDS: &[&str] = &[
     "doaj",
     "gutenberg",
     "meta_search",
+    "searxng",
     "web",
     "brave",
     "bing",
@@ -81,12 +86,17 @@ impl Document {
     }
 }
 
-/// Per-source configuration delivered from the frontend. Currently empty —
-/// every backend builds itself from the shared HTTP client. Kept as an
-/// extension point so adding per-source knobs later doesn't ripple through
-/// every callsite of `build_source`.
+/// Per-source configuration delivered from the frontend. Today the only
+/// knob is `instance_url` for the `searxng` source — when blank, the
+/// source falls back to the embedded local server at
+/// `crate::EMBEDDED_SEARXNG_ADDR`. Kept as an extension point so adding
+/// future per-source knobs (auth tokens, regional locks, etc.) doesn't
+/// ripple through every callsite of `build_source`.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct SourceOptions {}
+pub struct SourceOptions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instance_url: Option<String>,
+}
 
 #[async_trait]
 pub trait Source: Send + Sync {
@@ -104,7 +114,7 @@ pub trait Source: Send + Sync {
 /// Build a source by id. Returns `None` for unknown ids.
 pub fn build_source(
     name: &str,
-    _options: SourceOptions,
+    options: SourceOptions,
     client: Arc<reqwest::Client>,
     app: Option<AppHandle>,
 ) -> Option<Box<dyn Source>> {
@@ -126,6 +136,10 @@ pub fn build_source(
         "marginalia" => Some(Box::new(marginalia_html::MarginaliaHtmlSource::new(client))),
         "startpage" => Some(Box::new(startpage_html::StartpageHtmlSource::new(client))),
         "meta_search" => Some(Box::new(meta_search::MetaSearchSource::new(client, app))),
+        "searxng" => Some(Box::new(local_searxng_source::LocalSearxngSource::new(
+            client,
+            options.instance_url,
+        ))),
         _ => None,
     }
 }

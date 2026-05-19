@@ -28,6 +28,12 @@ async-trait = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "gzip"] }
 url = "2"
 
+# Embedded local SearXNG-compatible search server. Boots a tiny axum HTTP
+# service on 127.0.0.1:<ephemeral> at app startup so users get
+# zero-config metasearch without Docker, Python, or any sidecar binary.
+axum = { version = "0.7", default-features = false, features = ["http1", "tokio", "json", "query"] }
+tower = { version = "0.5", default-features = false }
+
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

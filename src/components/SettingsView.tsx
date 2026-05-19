@@ -21,11 +21,9 @@ export default function SettingsView() {
     try {
       const output = await api.setupSearXNG();
       setSearxResult(output);
-      const match = output.match(/^SEARXNG_URL=(.+)$/m);
-      if (match) {
-        setSettings("searxngUrl", match[1].trim());
-        saveSettings();
-      }
+      // Don't write the verified URL into settings — leaving searxngUrl
+      // blank keeps the "auto = embedded" semantic. The verified URL only
+      // matters as confirmation that the local server is up.
     } catch (e) {
       setSearxError(String(e));
     } finally {
@@ -106,12 +104,13 @@ export default function SettingsView() {
           </label>
         </section>
 
-        {/* SearXNG */}
+        {/* SearXNG — embedded local server (no Docker, no Python) */}
         <section class="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">
-          <h2 class="mb-1 text-sm font-semibold">Search Infrastructure</h2>
+          <h2 class="mb-1 text-sm font-semibold">Local Search Engine</h2>
           <p class="mb-4 text-xs text-[var(--color-muted-foreground)]">
-            SearXNG is a privacy-respecting metasearch engine. With Docker installed,
-            one click spins up a local instance and enables it as a search source.
+            Document Finder ships its own SearXNG-compatible search server built into the app.
+            No Docker, no Python, no setup. Verify it's running below — or override with a
+            remote SearXNG instance if you'd rather use one.
           </p>
           <div class="space-y-4">
             <button
@@ -122,11 +121,13 @@ export default function SettingsView() {
               <Show when={settingUpSearx()} fallback={<Server size={14} />}>
                 <Loader2 size={14} class="animate-spin" />
               </Show>
-              {settingUpSearx() ? "Setting up… (may take a few minutes)" : "Setup SearXNG with Docker"}
+              {settingUpSearx() ? "Verifying…" : "Verify Local Search Engine"}
             </button>
 
             <label class="block">
-              <span class="mb-1 block text-xs font-medium text-[var(--color-muted-foreground)]">SearXNG instance URL</span>
+              <span class="mb-1 block text-xs font-medium text-[var(--color-muted-foreground)]">
+                SearXNG endpoint
+              </span>
               <input
                 type="text"
                 value={settings.searxngUrl}
@@ -134,11 +135,11 @@ export default function SettingsView() {
                   setSettings("searxngUrl", e.currentTarget.value);
                   saveSettings();
                 }}
-                placeholder="http://localhost:8080"
+                placeholder="(auto — embedded server)"
                 class="w-full rounded-lg border border-[var(--color-border)] bg-transparent px-3 py-2 font-mono text-xs outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-colors"
               />
               <p class="mt-1 text-[10px] text-[var(--color-muted-foreground)]">
-                Local or remote SearXNG instance
+                Leave blank to use the embedded server. Override only if you have a reason to.
               </p>
             </label>
 
@@ -148,7 +149,9 @@ export default function SettingsView() {
               >
                 <CheckCircle2 size={14} class="mt-0.5 shrink-0" style={{ color: "var(--color-success)" }} />
                 <div>
-                  <p class="text-xs font-medium" style={{ color: "var(--color-success-fg)" }}>SearXNG is running at {settings.searxngUrl}</p>
+                  <p class="text-xs font-medium" style={{ color: "var(--color-success-fg)" }}>
+                    Local SearXNG is running at {settings.searxngUrl || "the embedded endpoint"}
+                  </p>
                   <Show when={searxResult()}>
                     <pre class="mt-1 max-h-24 overflow-auto whitespace-pre-wrap font-mono text-[10px] opacity-80" style={{ color: "var(--color-success-fg)" }}>
                       {searxResult()}
@@ -160,7 +163,7 @@ export default function SettingsView() {
 
             <Show when={searxError()}>
               <div class="rounded-lg border border-[var(--color-destructive)]/30 bg-[var(--color-destructive)]/5 p-3 text-xs text-[var(--color-destructive)]">
-                <p class="font-medium">Setup failed</p>
+                <p class="font-medium">Verification failed</p>
                 <p class="mt-0.5 opacity-80">{searxError()}</p>
               </div>
             </Show>

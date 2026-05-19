@@ -4,6 +4,7 @@ pub mod db;
 pub mod dedup;
 pub mod downloader;
 pub mod extract;
+pub mod local_searxng;
 pub mod manifest;
 pub mod orchestrator;
 pub mod query;
