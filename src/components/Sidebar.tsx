@@ -64,22 +64,24 @@ export default function Sidebar() {
           </button>
         </div>
         <div class="df-recent">
-          <For each={recent()}>{(lib) => (
-            <button
-              class="df-recent-item"
-              classList={{ active: uiStore.activeLibrary?.path === lib.path }}
-              onClick={() => {
-                uiStore.setActiveLibrary(lib);
-                uiStore.setView("library");
-              }}
-              title={lib.query ?? lib.name}
-            >
-              <span class="df-recent-title">{lib.query ?? lib.name}</span>
-              <span class="df-recent-meta">
-                {lib.n_docs} docs · {formatBytes(lib.size_bytes)}
-              </span>
-            </button>
-          )}</For>
+          <For each={recent()}>
+            {(lib) => (
+              <button
+                class="df-recent-item"
+                classList={{ active: uiStore.activeLibrary?.path === lib.path }}
+                onClick={() => {
+                  uiStore.setActiveLibrary(lib);
+                  uiStore.setView("library");
+                }}
+                title={lib.query ?? lib.name}
+              >
+                <span class="df-recent-title">{lib.query ?? lib.name}</span>
+                <span class="df-recent-meta">
+                  {lib.n_docs} docs · {formatBytes(lib.size_bytes)}
+                </span>
+              </button>
+            )}
+          </For>
         </div>
       </Show>
 

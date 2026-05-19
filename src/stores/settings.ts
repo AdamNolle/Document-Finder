@@ -28,7 +28,10 @@ function safeSources(v: unknown): SourceId[] {
 function safeUrl(v: unknown, fallback: string): string {
   if (typeof v !== "string") return fallback;
   if (v.trim() === "") return "";
-  try { const u = new URL(v); if (u.protocol === "http:" || u.protocol === "https:") return v; } catch {}
+  try {
+    const u = new URL(v);
+    if (u.protocol === "http:" || u.protocol === "https:") return v;
+  } catch {}
   return fallback;
 }
 
@@ -39,14 +42,29 @@ function migrateSearxng(v: unknown): string {
 
 export type Theme = "paper" | "slate" | "midnight";
 export type Accent =
-  | "sky" | "blue" | "ink" | "electric" | "teal"
-  | "emerald" | "amber" | "crimson" | "plum";
+  | "sky"
+  | "blue"
+  | "ink"
+  | "electric"
+  | "teal"
+  | "emerald"
+  | "amber"
+  | "crimson"
+  | "plum";
 export type Density = "compact" | "regular";
 export type StreamLayout = "stacked" | "split";
 
 export const THEMES: readonly Theme[] = ["paper", "slate", "midnight"] as const;
 export const ACCENTS: readonly Accent[] = [
-  "sky", "blue", "ink", "electric", "teal", "emerald", "amber", "crimson", "plum",
+  "sky",
+  "blue",
+  "ink",
+  "electric",
+  "teal",
+  "emerald",
+  "amber",
+  "crimson",
+  "plum",
 ] as const;
 export const DENSITIES: readonly Density[] = ["compact", "regular"] as const;
 export const STREAM_LAYOUTS: readonly StreamLayout[] = ["stacked", "split"] as const;
@@ -65,20 +83,21 @@ function safeStreamLayout(v: unknown): StreamLayout {
 }
 
 export const [settings, setSettings] = createStore({
-  libraryRoot:     safeStr(saved.libraryRoot, ""),
-  perSource:       posInt(saved.perSource, 100),
-  maxTotal:        posInt(saved.maxTotal, 500),
-  concurrency:     posInt(saved.concurrency, 8),
+  libraryRoot: safeStr(saved.libraryRoot, ""),
+  perSource: posInt(saved.perSource, 100),
+  maxTotal: posInt(saved.maxTotal, 500),
+  concurrency: posInt(saved.concurrency, 8),
   selectedSources: safeSources(saved.selectedSources),
-  searxngUrl:      migrateSearxng(saved.searxngUrl),
-  theme:           safeTheme(saved.theme),
-  accent:          safeAccent(saved.accent),
-  density:         safeDensity(saved.density),
-  streamLayout:    safeStreamLayout(saved.streamLayout),
+  searxngUrl: migrateSearxng(saved.searxngUrl),
+  theme: safeTheme(saved.theme),
+  accent: safeAccent(saved.accent),
+  density: safeDensity(saved.density),
+  streamLayout: safeStreamLayout(saved.streamLayout),
 });
 
 if (!settings.libraryRoot) {
-  api.defaultLibraryDir()
+  api
+    .defaultLibraryDir()
     .then(({ library_root }) => setSettings("libraryRoot", library_root))
     .catch(() => {});
 }
@@ -118,7 +137,7 @@ export function setStreamLayout(l: StreamLayout) {
 
 export function toggleSource(id: SourceId) {
   setSettings("selectedSources", (prev) =>
-    prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
   );
   saveSettings();
 }

@@ -43,12 +43,10 @@ export interface LogInfo {
 }
 
 export const api = {
-  defaultLibraryDir: () =>
-    invoke<{ library_root: string }>("default_library_dir"),
+  defaultLibraryDir: () => invoke<{ library_root: string }>("default_library_dir"),
   startRun: (req: RunRequest) => invoke<void>("start_run", { req }),
   cancelRun: () => invoke<void>("cancel_run"),
-  listLibraries: (root: string) =>
-    invoke<LibraryInfo[]>("list_libraries", { root }),
+  listLibraries: (root: string) => invoke<LibraryInfo[]>("list_libraries", { root }),
   openLibrary: (path: string) => invoke<LibraryInfo>("open_library", { path }),
   exportLibraryZip: (
     folder: string,
@@ -65,7 +63,6 @@ export const api = {
     }),
   revealInFinder: (path: string) => invoke<void>("reveal_in_finder", { path }),
   runLogInfo: () => invoke<LogInfo>("run_log_info"),
-  runLogTail: (max?: number) =>
-    invoke<unknown[]>("run_log_tail", max != null ? { max } : {}),
+  runLogTail: (max?: number) => invoke<unknown[]>("run_log_tail", max != null ? { max } : {}),
   setupSearXNG: () => invoke<string>("setup_searxng"),
 };

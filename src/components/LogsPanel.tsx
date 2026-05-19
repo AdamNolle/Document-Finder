@@ -1,21 +1,21 @@
 import { createSignal, createEffect, onCleanup, For, Show } from "solid-js";
 import { Copy, Trash2, FolderOpen, RefreshCw } from "lucide-solid";
-import {
-  log, formatEntry,
-  type LogEntry, type LogLevel,
-} from "@/lib/log";
+import { log, formatEntry, type LogEntry, type LogLevel } from "@/lib/log";
 import { api, type LogInfo } from "@/lib/tauri";
 import { formatBytes } from "@/lib/utils";
 
 const LEVEL_FILTERS: readonly { id: LogLevel | "all"; label: string }[] = [
-  { id: "all",   label: "All" },
-  { id: "info",  label: "Info" },
-  { id: "warn",  label: "Warn" },
+  { id: "all", label: "All" },
+  { id: "info", label: "Info" },
+  { id: "warn", label: "Warn" },
   { id: "error", label: "Errors" },
 ] as const;
 
 const LEVEL_RANK: Record<LogLevel, number> = {
-  debug: 0, info: 1, warn: 2, error: 3,
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
 };
 
 /// Live-updating view of the frontend log ring buffer plus access to the
@@ -65,24 +65,26 @@ export default function LogsPanel() {
     <section class="df-section">
       <h2>Logs</h2>
       <p class="hint">
-        Live frontend log + Rust backend runlog path. Filter by level, copy
-        for bug reports, or open the runlog in Finder.
+        Live frontend log + Rust backend runlog path. Filter by level, copy for bug reports, or open
+        the runlog in Finder.
       </p>
 
-      <div style={{
-        display: "flex", "align-items": "center",
-        gap: "var(--pad-3)",
-        "margin-bottom": "var(--pad-3)",
-      }}>
+      <div
+        style={{
+          display: "flex",
+          "align-items": "center",
+          gap: "var(--pad-3)",
+          "margin-bottom": "var(--pad-3)",
+        }}
+      >
         <div class="df-theme-radio" role="radiogroup" aria-label="Log level filter">
-          <For each={LEVEL_FILTERS}>{(f) => (
-            <button
-              aria-pressed={filter() === f.id}
-              onClick={() => setFilter(f.id)}
-            >
-              {f.label}
-            </button>
-          )}</For>
+          <For each={LEVEL_FILTERS}>
+            {(f) => (
+              <button aria-pressed={filter() === f.id} onClick={() => setFilter(f.id)}>
+                {f.label}
+              </button>
+            )}
+          </For>
         </div>
         <span style={{ flex: 1 }} />
         <button
@@ -130,49 +132,60 @@ export default function LogsPanel() {
         <Show
           when={filtered().length > 0}
           fallback={
-            <div style={{
-              color: "var(--ink-3)",
-              padding: "var(--pad-3) 0",
-              "text-align": "center",
-            }}>
+            <div
+              style={{
+                color: "var(--ink-3)",
+                padding: "var(--pad-3) 0",
+                "text-align": "center",
+              }}
+            >
               No log entries at this level yet. Run a search to populate.
             </div>
           }
         >
-          <For each={filtered()}>{(e) => (
-            <div
-              style={{
-                "white-space": "pre-wrap",
-                "word-break": "break-word",
-                color:
-                  e.level === "error" ? "var(--bad)"
-                  : e.level === "warn" ? "var(--warn)"
-                  : e.level === "debug" ? "var(--ink-3)"
-                  : "var(--ink-2)",
-              }}
-            >
-              {formatEntry(e)}
-            </div>
-          )}</For>
+          <For each={filtered()}>
+            {(e) => (
+              <div
+                style={{
+                  "white-space": "pre-wrap",
+                  "word-break": "break-word",
+                  color:
+                    e.level === "error"
+                      ? "var(--bad)"
+                      : e.level === "warn"
+                        ? "var(--warn)"
+                        : e.level === "debug"
+                          ? "var(--ink-3)"
+                          : "var(--ink-2)",
+                }}
+              >
+                {formatEntry(e)}
+              </div>
+            )}
+          </For>
         </Show>
       </div>
 
       {/* Rust runlog file */}
       <div style={{ "margin-top": "var(--pad-4)" }}>
-        <div style={{
-          "font-size": "11px",
-          "text-transform": "uppercase",
-          "letter-spacing": "0.06em",
-          color: "var(--ink-3)",
-          "font-weight": 500,
-          "margin-bottom": "8px",
-        }}>
+        <div
+          style={{
+            "font-size": "11px",
+            "text-transform": "uppercase",
+            "letter-spacing": "0.06em",
+            color: "var(--ink-3)",
+            "font-weight": 500,
+            "margin-bottom": "8px",
+          }}
+        >
           Backend runlog
         </div>
         <Show
           when={logInfo()}
           fallback={
-            <p class="hint" style={{ margin: 0 }}>Unavailable.</p>
+            <p class="hint" style={{ margin: 0 }}>
+              Unavailable.
+            </p>
           }
         >
           {(info) => (

@@ -25,24 +25,16 @@ export default function FindTab() {
   const rs = () => runStore.state;
   const running = () => rs().running;
   const hasResults = () =>
-    running() ||
-    rs().completed.length > 0 ||
-    Object.keys(rs().inFlight).length > 0;
+    running() || rs().completed.length > 0 || Object.keys(rs().inFlight).length > 0;
 
   // Head stats — read from uiStore.knownLibraries which App refreshes.
   const libCount = createMemo(() => uiStore.knownLibraries.length);
-  const docCount = createMemo(() =>
-    uiStore.knownLibraries.reduce((s, l) => s + l.n_docs, 0),
-  );
-  const totalBytes = createMemo(() =>
-    uiStore.knownLibraries.reduce((s, l) => s + l.size_bytes, 0),
-  );
+  const docCount = createMemo(() => uiStore.knownLibraries.reduce((s, l) => s + l.n_docs, 0));
+  const totalBytes = createMemo(() => uiStore.knownLibraries.reduce((s, l) => s + l.size_bytes, 0));
 
   const issueCount = () =>
-    rs().sourceIssues.length +
-    rs().completed.filter((c) => c.status === "failed").length;
-  const failedItems = () =>
-    rs().completed.filter((c) => c.status === "failed");
+    rs().sourceIssues.length + rs().completed.filter((c) => c.status === "failed").length;
+  const failedItems = () => rs().completed.filter((c) => c.status === "failed");
 
   async function handleSearch() {
     if (!query().trim() || running()) {
@@ -138,11 +130,13 @@ export default function FindTab() {
         </div>
         <SourcePanel />
         <Show when={settings.selectedSources.length === 0}>
-          <p style={{
-            "margin-top": "10px",
-            "font-size": "12px",
-            color: "var(--bad)",
-          }}>
+          <p
+            style={{
+              "margin-top": "10px",
+              "font-size": "12px",
+              color: "var(--bad)",
+            }}
+          >
             Enable at least one source to start a search.
           </p>
         </Show>
@@ -181,26 +175,30 @@ export default function FindTab() {
               {issueCount() === 1 ? "1 issue" : `${issueCount()} issues`}
             </summary>
             <ul>
-              <For each={rs().sourceIssues}>{(issue) => (
-                <li>
-                  <code
-                    style={{
-                      "--src-color": `var(--src-${issue.source.replace(/-/g, "_")})`,
-                    } as Record<string, string>}
-                  >
-                    {issue.source}
-                  </code>
-                  <span>{issue.error}</span>
-                </li>
-              )}</For>
-              <For each={failedItems()}>{(item) => (
-                <li>
-                  <code style={{ color: "var(--bad)" }}>
-                    {item.title.slice(0, 40)}
-                  </code>
-                  <span>{item.error ?? "download failed"}</span>
-                </li>
-              )}</For>
+              <For each={rs().sourceIssues}>
+                {(issue) => (
+                  <li>
+                    <code
+                      style={
+                        {
+                          "--src-color": `var(--src-${issue.source.replace(/-/g, "_")})`,
+                        } as Record<string, string>
+                      }
+                    >
+                      {issue.source}
+                    </code>
+                    <span>{issue.error}</span>
+                  </li>
+                )}
+              </For>
+              <For each={failedItems()}>
+                {(item) => (
+                  <li>
+                    <code style={{ color: "var(--bad)" }}>{item.title.slice(0, 40)}</code>
+                    <span>{item.error ?? "download failed"}</span>
+                  </li>
+                )}
+              </For>
             </ul>
           </details>
         </Show>

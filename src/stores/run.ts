@@ -128,7 +128,10 @@ function reset(query: string) {
 function apply(ev: DfEvent) {
   switch (ev.type) {
     case "keywords":
-      setState("subQueries", ev.payload.sub_queries.map((text) => ({ text, found: 0, done: 0 })));
+      setState(
+        "subQueries",
+        ev.payload.sub_queries.map((text) => ({ text, found: 0, done: 0 })),
+      );
       break;
 
     case "subquery_start":
@@ -156,7 +159,7 @@ function apply(ev: DfEvent) {
             ...s.sourceIssues,
             { source: ev.payload.source, error: ev.payload.error, ts: Date.now() },
           ].slice(-50);
-        })
+        }),
       );
       addLog("warn", `   ${ev.payload.source}: ${ev.payload.error}`);
       break;
@@ -183,7 +186,7 @@ function apply(ev: DfEvent) {
             total: 0,
           };
           s.active = Object.keys(s.inFlight).length;
-        })
+        }),
       );
       break;
 
@@ -218,7 +221,7 @@ function apply(ev: DfEvent) {
           s.failed = ev.payload.failed;
           s.total = ev.payload.total;
           s.completed = [...s.completed, item].slice(-500);
-        })
+        }),
       );
       break;
     }
@@ -241,7 +244,7 @@ function apply(ev: DfEvent) {
           s.failed = ev.payload.failed;
           s.total = ev.payload.total;
           s.completed = [...s.completed, item].slice(-500);
-        })
+        }),
       );
       break;
     }
@@ -262,7 +265,7 @@ function apply(ev: DfEvent) {
         ev.type === "cancelled" ? "warn" : "info",
         ev.type === "cancelled"
           ? `Cancelled. Saved ${ev.payload.done} file(s).`
-          : `Done. ${ev.payload.done} saved, ${ev.payload.failed} failed.`
+          : `Done. ${ev.payload.done} saved, ${ev.payload.failed} failed.`,
       );
       break;
 
@@ -297,7 +300,7 @@ function startTicker() {
     const bytes = state.bytesAccum;
     const delta = Math.max(0, bytes - lastBytes);
     lastBytes = bytes;
-    const mbps = dt > 0 ? (delta / 1_000_000) / dt : 0;
+    const mbps = dt > 0 ? delta / 1_000_000 / dt : 0;
     setState("speedHist", (prev) => {
       const next = prev.slice(prev.length >= 32 ? 1 : 0);
       next.push(mbps);
@@ -371,9 +374,7 @@ export const runStore = {
     return state;
   },
   get overallPct() {
-    return state.total > 0
-      ? Math.round(((state.done + state.failed) / state.total) * 100)
-      : 0;
+    return state.total > 0 ? Math.round(((state.done + state.failed) / state.total) * 100) : 0;
   },
   get currentMbps() {
     const h = state.speedHist;

@@ -1,9 +1,7 @@
 import { For, Show } from "solid-js";
 import { settings, setSettings, saveSettings, toggleSource } from "@/stores/settings";
 import { runStore } from "@/stores/run";
-import {
-  ALL_SOURCES, SOURCE_LABELS, SOURCE_DESCRIPTIONS, type SourceId,
-} from "@/lib/utils";
+import { ALL_SOURCES, SOURCE_LABELS, SOURCE_DESCRIPTIONS, type SourceId } from "@/lib/utils";
 
 /// 2-column rich-row source grid.
 ///
@@ -31,7 +29,8 @@ export default function SourcePanel() {
     saveSettings();
   };
   const invert = () => {
-    setSettings("selectedSources",
+    setSettings(
+      "selectedSources",
       ALL_SOURCES.filter((s) => !settings.selectedSources.includes(s)) as SourceId[],
     );
     saveSettings();
@@ -40,62 +39,69 @@ export default function SourcePanel() {
   return (
     <div class="df-srcpanel">
       <div class="df-srcpanel-head">
-        <strong>{enabledCount()} of {total()}</strong>
+        <strong>
+          {enabledCount()} of {total()}
+        </strong>
         <span>enabled · toggle which open-access platforms to fan the query out to</span>
       </div>
 
       <div class="df-srcpanel-grid">
-        <For each={ALL_SOURCES}>{(id) => {
-          const isOn = () => settings.selectedSources.includes(id);
-          const live = () => statusFor(id);
-          return (
-            <button
-              class="df-srcrow"
-              classList={{ on: isOn(), off: !isOn() }}
-              style={{ "--src-color": `var(--src-${id})` } as Record<string, string>}
-              onClick={(e) => {
-                e.preventDefault();
-                toggleSource(id);
-              }}
-              aria-pressed={isOn()}
-            >
-              <span class="df-srcrow-check">
-                <Show when={isOn()}>
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-6" stroke="currentColor" stroke-width="1.8"
-                      stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </Show>
-              </span>
-              <div class="df-srcrow-main">
-                <div class="df-srcrow-name">
-                  <span>{SOURCE_LABELS[id]}</span>
-                  <span class="src-id">{id}</span>
+        <For each={ALL_SOURCES}>
+          {(id) => {
+            const isOn = () => settings.selectedSources.includes(id);
+            const live = () => statusFor(id);
+            return (
+              <button
+                class="df-srcrow"
+                classList={{ on: isOn(), off: !isOn() }}
+                style={{ "--src-color": `var(--src-${id})` } as Record<string, string>}
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleSource(id);
+                }}
+                aria-pressed={isOn()}
+              >
+                <span class="df-srcrow-check">
+                  <Show when={isOn()}>
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                      <path
+                        d="M2 6l3 3 5-6"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </Show>
+                </span>
+                <div class="df-srcrow-main">
+                  <div class="df-srcrow-name">
+                    <span>{SOURCE_LABELS[id]}</span>
+                    <span class="src-id">{id}</span>
+                  </div>
+                  <div class="df-srcrow-desc">{SOURCE_DESCRIPTIONS[id] ?? ""}</div>
                 </div>
-                <div class="df-srcrow-desc">{SOURCE_DESCRIPTIONS[id] ?? ""}</div>
-              </div>
-              <div class="df-srcrow-meta">
-                <Show when={isRunning() && live()}>
-                  <span
-                    class="df-srcrow-status"
-                    classList={{
-                      live: live()?.phase === "querying",
-                      ok: live()?.phase === "done",
-                      err: live()?.phase === "error",
-                    }}
-                  >
-                    <span class="df-srcrow-status-dot" />
-                    <Show when={live()?.phase === "querying"}>scanning…</Show>
-                    <Show when={live()?.phase === "done"}>
-                      +{live()?.doneCount ?? 0} hits
-                    </Show>
-                    <Show when={live()?.phase === "error"}>error</Show>
-                  </span>
-                </Show>
-              </div>
-            </button>
-          );
-        }}</For>
+                <div class="df-srcrow-meta">
+                  <Show when={isRunning() && live()}>
+                    <span
+                      class="df-srcrow-status"
+                      classList={{
+                        live: live()?.phase === "querying",
+                        ok: live()?.phase === "done",
+                        err: live()?.phase === "error",
+                      }}
+                    >
+                      <span class="df-srcrow-status-dot" />
+                      <Show when={live()?.phase === "querying"}>scanning…</Show>
+                      <Show when={live()?.phase === "done"}>+{live()?.doneCount ?? 0} hits</Show>
+                      <Show when={live()?.phase === "error"}>error</Show>
+                    </span>
+                  </Show>
+                </div>
+              </button>
+            );
+          }}
+        </For>
       </div>
 
       <div class="df-srcactions">
