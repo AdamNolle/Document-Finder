@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onCleanup, Show, For, createMemo } from "solid-js";
-import { Archive, FolderOpen, Loader2, X, RefreshCw, BookOpen } from "lucide-solid";
+import { Archive, FolderOpen, Loader2, X, RefreshCw, BookOpen, Trash2 } from "lucide-solid";
 import { save } from "@tauri-apps/plugin-dialog";
 import { api, type LibraryInfo } from "@/lib/tauri";
 import { uiStore } from "@/stores/ui";
@@ -12,6 +12,12 @@ export default function LibraryView() {
   const [error, setError] = createSignal<string | null>(null);
   const [exportingPath, setExportingPath] = createSignal<string | null>(null);
   const [exportError, setExportError] = createSignal<string | null>(null);
+  const [deletingPath, setDeletingPath] = createSignal<string | null>(null);
+  const [deleteError, setDeleteError] = createSignal<string | null>(null);
+  // Path of the library that the user has clicked Delete on; rendering a
+  // confirm prompt inline instead of `window.confirm` keeps the editorial
+  // look. Cleared by either Cancel or successful deletion.
+  const [confirmingPath, setConfirmingPath] = createSignal<string | null>(null);
   const [loadTick, setLoadTick] = createSignal(0);
 
   const libraries = createMemo(() => uiStore.knownLibraries);
@@ -74,6 +80,26 @@ export default function LibraryView() {
     }
   }
 
+  async function handleDelete(lib: LibraryInfo) {
+    setDeleteError(null);
+    setDeletingPath(lib.path);
+    setConfirmingPath(null);
+    try {
+      await api.deleteLibrary(lib.path);
+      log.info("library", `deleted ${lib.name}`, { path: lib.path, docs: lib.n_docs });
+      // Drop from cache + clear active selection if it pointed here, then
+      // bump loadTick so the directory rescan picks up the disk change.
+      uiStore.setKnownLibraries(uiStore.knownLibraries.filter((l) => l.path !== lib.path));
+      if (uiStore.activeLibrary?.path === lib.path) uiStore.setActiveLibrary(null);
+      setLoadTick((n) => n + 1);
+    } catch (e) {
+      setDeleteError(String(e));
+      log.error("library", `delete ${lib.name} failed`, e);
+    } finally {
+      setDeletingPath(null);
+    }
+  }
+
   return (
     <div class="df-canvas">
       <div class="df-canvas-head">
@@ -102,6 +128,18 @@ export default function LibraryView() {
               <strong>Export failed.</strong> {exportError()}
             </div>
             <button class="df-banner-x" onClick={() => setExportError(null)} aria-label="Dismiss">
+              <X size={12} />
+            </button>
+          </div>
+        </Show>
+
+        <Show when={deleteError()}>
+          <div class="df-banner bad" style={{ "margin-bottom": "var(--pad-4)" }}>
+            <X size={14} />
+            <div class="df-banner-body">
+              <strong>Delete failed.</strong> {deleteError()}
+            </div>
+            <button class="df-banner-x" onClick={() => setDeleteError(null)} aria-label="Dismiss">
               <X size={12} />
             </button>
           </div>
@@ -183,27 +221,79 @@ export default function LibraryView() {
                         <strong>{formatBytes(lib.size_bytes)}</strong>
                       </span>
                     </div>
-                    <div class="df-libcard-actions" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        class="df-btn sm"
-                        onClick={(e) => handleExport(lib, e)}
-                        disabled={isExporting()}
+                    <Show
+                      when={confirmingPath() === lib.path}
+                      fallback={
+                        <div class="df-libcard-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            class="df-btn sm"
+                            onClick={(e) => handleExport(lib, e)}
+                            disabled={isExporting()}
+                          >
+                            <Show when={isExporting()} fallback={<Archive size={12} />}>
+                              <Loader2 size={12} class="spin" />
+                            </Show>
+                            Export ZIP
+                          </button>
+                          <button
+                            class="df-btn sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              api.revealInFinder(lib.path);
+                            }}
+                          >
+                            <FolderOpen size={12} /> Show
+                          </button>
+                          <button
+                            class="df-btn sm danger"
+                            disabled={deletingPath() === lib.path}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmingPath(lib.path);
+                            }}
+                            aria-label={`Delete library ${lib.query ?? lib.name}`}
+                          >
+                            <Show
+                              when={deletingPath() === lib.path}
+                              fallback={<Trash2 size={12} />}
+                            >
+                              <Loader2 size={12} class="spin" />
+                            </Show>
+                            Delete
+                          </button>
+                        </div>
+                      }
+                    >
+                      {/* Inline confirm. Deleting wipes the folder + DB from
+                          disk — no undo, so the user has to commit. */}
+                      <div
+                        class="df-libcard-actions"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ "flex-direction": "column", "align-items": "stretch", gap: "8px" }}
                       >
-                        <Show when={isExporting()} fallback={<Archive size={12} />}>
-                          <Loader2 size={12} class="spin" />
-                        </Show>
-                        Export ZIP
-                      </button>
-                      <button
-                        class="df-btn sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          api.revealInFinder(lib.path);
-                        }}
-                      >
-                        <FolderOpen size={12} /> Show
-                      </button>
-                    </div>
+                        <span
+                          style={{
+                            "font-size": "11.5px",
+                            color: "var(--bad)",
+                            "font-weight": 500,
+                          }}
+                        >
+                          Permanently delete {lib.n_docs} docs from disk?
+                        </span>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            class="df-btn sm danger"
+                            onClick={() => handleDelete(lib)}
+                            disabled={deletingPath() === lib.path}
+                          >
+                            <Trash2 size={12} /> Yes, delete
+                          </button>
+                          <button class="df-btn sm" onClick={() => setConfirmingPath(null)}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </Show>
                   </div>
                 );
               }}

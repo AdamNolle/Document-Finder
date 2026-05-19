@@ -12,7 +12,7 @@ export default function Sidebar() {
   return (
     <nav class="df-sidebar" aria-label="Primary">
       <div class="df-brand">
-        <div class="df-brand-mark">Df</div>
+        <img class="df-brand-logo" src="/logo.svg" alt="Document Finder" />
         <div class="df-brand-name">Document Finder</div>
       </div>
 

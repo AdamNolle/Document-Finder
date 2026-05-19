@@ -5,6 +5,7 @@ import { listenAll } from "./lib/events";
 import { runStore } from "./stores/run";
 import { applyAttrs, settings } from "./stores/settings";
 import { installGlobalHandlers, log } from "./lib/log";
+import { recordEvent } from "./stores/source_stats";
 
 // Catch unhandled errors and promise rejections before they vanish into
 // devtools. Must come first so any error during early boot also surfaces.
@@ -30,6 +31,10 @@ listenAll((ev) => {
     const lvl = ev.type === "error" ? "error" : ev.type === "source_error" ? "warn" : "debug";
     log[lvl]("backend", `event ${ev.type}`, ev.payload);
   }
+  // Tally lifetime per-source stats so users get a sense of which
+  // platforms are productive across runs. Cheap — no-ops on event types
+  // that aren't source_done / download_done / download_failed.
+  recordEvent(ev);
   runStore.apply(ev);
 })
   .then((fn) => {

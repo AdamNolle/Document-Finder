@@ -284,30 +284,16 @@ button:focus-visible {
   gap: 10px;
   padding: 0 var(--pad-5) var(--pad-5);
 }
-.df-brand-mark {
+/* Old app-icon SVG. The logo already includes its own gradient/shape,
+   so no ink-tinted backplate or accent dot — just the raw asset, sized
+   to match the previous 28×28 brand-mark footprint. */
+.df-brand-logo {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background: var(--ink);
-  color: var(--canvas);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-ui);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: -0.02em;
-  position: relative;
   flex-shrink: 0;
-}
-.df-brand-mark::after {
-  content: "";
-  position: absolute;
-  inset: auto 4px 4px auto;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
+  display: block;
+  object-fit: contain;
 }
 .df-brand-name {
   font-family: var(--font-ui);
@@ -753,6 +739,33 @@ button:focus-visible {
   gap: 8px;
   flex-shrink: 0;
 }
+/* Lifetime saved-count badge shown in each source row when no run is
+   active. Reads from sourceStats; mirrors the per-stat layout from the
+   bundle's design (right-aligned monospace number + tiny uppercase label). */
+.df-srcrow-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.df-srcrow-stat-num {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.df-srcrow-stat-label {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
 .df-srcrow-status {
   display: inline-flex;
   align-items: center;
