@@ -5,6 +5,16 @@ pub mod events;
 pub mod sources;
 pub mod util;
 
+use once_cell::sync::OnceCell;
+use std::net::SocketAddr;
+
+/// Address of the embedded SearXNG-compatible search server (see
+/// `engine::local_searxng`). Populated once at app startup; read by
+/// `commands::setup_searxng` and by the `searxng` source so the rest of
+/// the codebase can ask "where is the local SearXNG?" without juggling
+/// Tauri state.
+pub static EMBEDDED_SEARXNG_ADDR: OnceCell<SocketAddr> = OnceCell::new();
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -38,8 +48,25 @@ pub fn run() {
             commands::delete_model,
             commands::delete_library,
             commands::reset_ai_state,
+            commands::setup_searxng,
         ])
-        .setup(|_app| Ok(()))
+        .setup(|_app| {
+            // Spin up the embedded SearXNG-compatible server. Detached
+            // because boot must not block app launch — the server is
+            // ready ~50ms later and reachable via `setup_searxng()` for
+            // anyone who wants its URL.
+            tauri::async_runtime::spawn(async {
+                match engine::local_searxng::start().await {
+                    Ok(addr) => {
+                        let _ = EMBEDDED_SEARXNG_ADDR.set(addr);
+                    }
+                    Err(e) => {
+                        tracing::error!("embedded searxng failed to start: {e}");
+                    }
+                }
+            });
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running document-finder");
 }

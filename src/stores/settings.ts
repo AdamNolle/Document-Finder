@@ -27,8 +27,18 @@ function safeSources(v: unknown): SourceId[] {
 }
 function safeUrl(v: unknown, fallback: string): string {
   if (typeof v !== "string") return fallback;
+  if (v.trim() === "") return "";
   try { const u = new URL(v); if (u.protocol === "http:" || u.protocol === "https:") return v; } catch {}
   return fallback;
+}
+
+/// v2 defaulted searxngUrl to the Docker port http://localhost:8080. In v3
+/// the embedded server is the source of truth and that URL is wrong, so
+/// rewrite it to blank on load. Blank means "use the embedded server" on
+/// both sides of the Tauri boundary.
+function migrateSearxng(v: unknown): string {
+  if (v === "http://localhost:8080") return "";
+  return safeUrl(v, "");
 }
 
 export const [settings, setSettings] = createStore({
@@ -37,7 +47,7 @@ export const [settings, setSettings] = createStore({
   maxTotal:        posInt(saved.maxTotal, 500),
   concurrency:     posInt(saved.concurrency, 8),
   selectedSources: safeSources(saved.selectedSources),
-  searxngUrl:      safeUrl(saved.searxngUrl, "http://localhost:8080"),
+  searxngUrl:      migrateSearxng(saved.searxngUrl),
 });
 
 if (!settings.libraryRoot) {

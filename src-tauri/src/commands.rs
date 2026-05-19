@@ -702,6 +702,33 @@ pub async fn reset_ai_state() -> Result<(), String> {
 }
 
 // =============================================================================
+// Embedded SearXNG-compatible local server (Phase C — no Docker required)
+// =============================================================================
+
+/// Returns the URL of the locally embedded SearXNG-compatible HTTP server.
+///
+/// On app startup `engine::local_searxng::start()` binds an `axum` listener
+/// to a random localhost port; this command exposes that URL to the
+/// frontend so the SettingsView can show "running at http://…" and the
+/// `searxng` source can default to it. Polls briefly because the boot is
+/// async and the user might invoke this command before the server has
+/// finished claiming a port.
+#[tauri::command]
+pub async fn setup_searxng() -> Result<String, String> {
+    use std::time::Duration;
+    for _ in 0..40 {
+        if let Some(addr) = crate::EMBEDDED_SEARXNG_ADDR.get() {
+            return Ok(format!(
+                "SEARXNG_URL=http://{addr}\nSEARXNG_LOCAL=embedded\nSEARXNG_DOCKER=false\nSEARXNG_VERSION={}",
+                env!("CARGO_PKG_VERSION"),
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    Err("Embedded SearXNG server did not finish starting within 4s. Check the app log; the server may have failed to bind a localhost port.".into())
+}
+
+// =============================================================================
 // Library delete (F3)
 // =============================================================================
 
