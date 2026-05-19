@@ -1,10 +1,7 @@
 /// Tiny SVG sparkline. Used by the run card's speed strip to visualize
 /// the last ~32 throughput samples. Pure presentational — values are
 /// expected to be smoothed upstream (run.ts ticker handles that).
-export default function Sparkline(props: {
-  values: number[];
-  color?: string;
-}) {
+export default function Sparkline(props: { values: number[]; color?: string }) {
   const path = () => {
     const v = props.values;
     if (v.length < 2) return "";
@@ -21,12 +18,7 @@ export default function Sparkline(props: {
   };
 
   return (
-    <svg
-      class="df-spark-svg"
-      viewBox="0 0 100 28"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
+    <svg class="df-spark-svg" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
       <path
         d={path()}
         fill="none"

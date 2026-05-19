@@ -1,9 +1,18 @@
 import { For } from "solid-js";
 import {
   settings,
-  setTheme, setAccent, setDensity, setStreamLayout,
-  THEMES, ACCENTS, DENSITIES, STREAM_LAYOUTS,
-  type Theme, type Accent, type Density, type StreamLayout,
+  setTheme,
+  setAccent,
+  setDensity,
+  setStreamLayout,
+  THEMES,
+  ACCENTS,
+  DENSITIES,
+  STREAM_LAYOUTS,
+  type Theme,
+  type Accent,
+  type Density,
+  type StreamLayout,
 } from "@/stores/settings";
 
 const THEME_LABELS: Record<Theme, string> = {
@@ -39,76 +48,115 @@ export default function ThemeAccentPicker() {
   return (
     <section class="df-section">
       <h2>Theme & Accent</h2>
-      <p class="hint">
-        Pick a theme and accent. Choices persist across launches.
-      </p>
+      <p class="hint">Pick a theme and accent. Choices persist across launches.</p>
 
       <div style={{ display: "flex", "flex-direction": "column", gap: "var(--pad-4)" }}>
         <div>
-          <div style={{ "margin-bottom": "8px", "font-size": "11px",
-            "text-transform": "uppercase", "letter-spacing": "0.06em",
-            color: "var(--ink-3)", "font-weight": "500" }}>Mode</div>
+          <div
+            style={{
+              "margin-bottom": "8px",
+              "font-size": "11px",
+              "text-transform": "uppercase",
+              "letter-spacing": "0.06em",
+              color: "var(--ink-3)",
+              "font-weight": "500",
+            }}
+          >
+            Mode
+          </div>
           <div class="df-theme-radio" role="radiogroup" aria-label="Theme">
-            <For each={THEMES}>{(t) => (
-              <button
-                aria-pressed={settings.theme === t}
-                onClick={() => setTheme(t)}
-                title={THEME_LABELS[t]}
-              >
-                {THEME_LABELS[t]}
-              </button>
-            )}</For>
+            <For each={THEMES}>
+              {(t) => (
+                <button
+                  aria-pressed={settings.theme === t}
+                  onClick={() => setTheme(t)}
+                  title={THEME_LABELS[t]}
+                >
+                  {THEME_LABELS[t]}
+                </button>
+              )}
+            </For>
           </div>
         </div>
 
         <div>
-          <div style={{ "margin-bottom": "8px", "font-size": "11px",
-            "text-transform": "uppercase", "letter-spacing": "0.06em",
-            color: "var(--ink-3)", "font-weight": "500" }}>Accent</div>
+          <div
+            style={{
+              "margin-bottom": "8px",
+              "font-size": "11px",
+              "text-transform": "uppercase",
+              "letter-spacing": "0.06em",
+              color: "var(--ink-3)",
+              "font-weight": "500",
+            }}
+          >
+            Accent
+          </div>
           <div class="df-accent-grid" role="radiogroup" aria-label="Accent">
-            <For each={ACCENTS}>{(a) => (
-              <button
-                class="df-accent-chip"
-                aria-pressed={settings.accent === a}
-                aria-label={a}
-                title={a}
-                onClick={() => setAccent(a)}
-                style={{ "background-color": ACCENT_HEX[a] }}
-              />
-            )}</For>
+            <For each={ACCENTS}>
+              {(a) => (
+                <button
+                  class="df-accent-chip"
+                  aria-pressed={settings.accent === a}
+                  aria-label={a}
+                  title={a}
+                  onClick={() => setAccent(a)}
+                  style={{ "background-color": ACCENT_HEX[a] }}
+                />
+              )}
+            </For>
           </div>
         </div>
 
         <div style={{ display: "flex", gap: "var(--pad-5)", "flex-wrap": "wrap" }}>
           <div>
-            <div style={{ "margin-bottom": "8px", "font-size": "11px",
-              "text-transform": "uppercase", "letter-spacing": "0.06em",
-              color: "var(--ink-3)", "font-weight": "500" }}>Density</div>
+            <div
+              style={{
+                "margin-bottom": "8px",
+                "font-size": "11px",
+                "text-transform": "uppercase",
+                "letter-spacing": "0.06em",
+                color: "var(--ink-3)",
+                "font-weight": "500",
+              }}
+            >
+              Density
+            </div>
             <div class="df-theme-radio" role="radiogroup" aria-label="Density">
-              <For each={DENSITIES}>{(d) => (
-                <button
-                  aria-pressed={settings.density === d}
-                  onClick={() => setDensity(d)}
-                >
-                  {DENSITY_LABELS[d]}
-                </button>
-              )}</For>
+              <For each={DENSITIES}>
+                {(d) => (
+                  <button aria-pressed={settings.density === d} onClick={() => setDensity(d)}>
+                    {DENSITY_LABELS[d]}
+                  </button>
+                )}
+              </For>
             </div>
           </div>
 
           <div>
-            <div style={{ "margin-bottom": "8px", "font-size": "11px",
-              "text-transform": "uppercase", "letter-spacing": "0.06em",
-              color: "var(--ink-3)", "font-weight": "500" }}>Stream layout</div>
+            <div
+              style={{
+                "margin-bottom": "8px",
+                "font-size": "11px",
+                "text-transform": "uppercase",
+                "letter-spacing": "0.06em",
+                color: "var(--ink-3)",
+                "font-weight": "500",
+              }}
+            >
+              Stream layout
+            </div>
             <div class="df-theme-radio" role="radiogroup" aria-label="Stream layout">
-              <For each={STREAM_LAYOUTS}>{(l) => (
-                <button
-                  aria-pressed={settings.streamLayout === l}
-                  onClick={() => setStreamLayout(l)}
-                >
-                  {STREAM_LAYOUT_LABELS[l]}
-                </button>
-              )}</For>
+              <For each={STREAM_LAYOUTS}>
+                {(l) => (
+                  <button
+                    aria-pressed={settings.streamLayout === l}
+                    onClick={() => setStreamLayout(l)}
+                  >
+                    {STREAM_LAYOUT_LABELS[l]}
+                  </button>
+                )}
+              </For>
             </div>
           </div>
         </div>

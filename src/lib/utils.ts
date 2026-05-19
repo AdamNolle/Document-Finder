@@ -63,8 +63,6 @@ export type SourceId = (typeof ALL_SOURCES)[number];
 export function sourceColor(source: string): string {
   // Strip `meta_search/<engine>` prefix so the originating engine still
   // colors the badge.
-  const key = source.startsWith("meta_search/")
-    ? source.slice("meta_search/".length)
-    : source;
+  const key = source.startsWith("meta_search/") ? source.slice("meta_search/".length) : source;
   return `var(--src-${key.replace(/-/g, "_")}, var(--accent))`;
 }

@@ -38,9 +38,15 @@ export default function App() {
       <Sidebar />
       <main id="main-content" tabindex="-1" class="df-canvas">
         <Switch>
-          <Match when={uiStore.view === "find"}><FindTab /></Match>
-          <Match when={uiStore.view === "library"}><LibraryView /></Match>
-          <Match when={uiStore.view === "settings"}><SettingsView /></Match>
+          <Match when={uiStore.view === "find"}>
+            <FindTab />
+          </Match>
+          <Match when={uiStore.view === "library"}>
+            <LibraryView />
+          </Match>
+          <Match when={uiStore.view === "settings"}>
+            <SettingsView />
+          </Match>
         </Switch>
       </main>
     </div>

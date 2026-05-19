@@ -161,19 +161,25 @@ export default function RunCard() {
             </div>
           </Show>
           <div style={{ flex: 1 }} />
-          <div style={{
-            display: "flex", gap: "10px",
-            "font-family": "var(--font-mono)",
-            "font-size": "11px", color: "var(--ink-3)",
-          }}>
-            <For each={Object.entries(fileTypeCounts())}>{([k, v]) => (
-              <Show when={v > 0}>
-                <span>
-                  <span class={`df-ftype ${k}`}>{k}</span>{" "}
-                  <span style={{ color: "var(--ink)" }}>{v}</span>
-                </span>
-              </Show>
-            )}</For>
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              "font-family": "var(--font-mono)",
+              "font-size": "11px",
+              color: "var(--ink-3)",
+            }}
+          >
+            <For each={Object.entries(fileTypeCounts())}>
+              {([k, v]) => (
+                <Show when={v > 0}>
+                  <span>
+                    <span class={`df-ftype ${k}`}>{k}</span>{" "}
+                    <span style={{ color: "var(--ink)" }}>{v}</span>
+                  </span>
+                </Show>
+              )}
+            </For>
           </div>
           <div class="df-stat-label" style={{ "align-self": "center" }}>
             {pct()}% complete
@@ -220,56 +226,51 @@ export default function RunCard() {
       <Show when={rs().subQueries.length > 0 || settings.selectedSources.length > 0}>
         <div class="df-tel">
           <div class="df-tel-block">
-            <div class="df-tel-label">
-              Sub-queries ({rs().subQueries.length})
-            </div>
-            <For each={rs().subQueries}>{(sq, i) => (
-              <div class="df-subq-row">
-                <span class="df-subq-row-num">
-                  {String(i() + 1).padStart(2, "0")}
-                </span>
-                <span class="df-subq-row-text">
-                  <span>{sq.text}</span>
-                  <span class="df-subq-row-dots">
-                    <For each={[0, 1, 2, 3, 4]}>{(k) => (
-                      <i class={dotState(k)} />
-                    )}</For>
+            <div class="df-tel-label">Sub-queries ({rs().subQueries.length})</div>
+            <For each={rs().subQueries}>
+              {(sq, i) => (
+                <div class="df-subq-row">
+                  <span class="df-subq-row-num">{String(i() + 1).padStart(2, "0")}</span>
+                  <span class="df-subq-row-text">
+                    <span>{sq.text}</span>
+                    <span class="df-subq-row-dots">
+                      <For each={[0, 1, 2, 3, 4]}>{(k) => <i class={dotState(k)} />}</For>
+                    </span>
                   </span>
-                </span>
-                <span class="df-subq-row-count">
-                  {sq.done > 0 || sq.found > 0 ? `${sq.done}/${sq.found}` : ""}
-                </span>
-              </div>
-            )}</For>
+                  <span class="df-subq-row-count">
+                    {sq.done > 0 || sq.found > 0 ? `${sq.done}/${sq.found}` : ""}
+                  </span>
+                </div>
+              )}
+            </For>
           </div>
           <div class="df-tel-block">
             <div class="df-tel-label">By source</div>
             <div class="df-lanes">
-              <For each={settings.selectedSources}>{(id) => {
-                const v = () => perSource()[id] ?? { done: 0, inflight: 0 };
-                const max = laneMax();
-                return (
-                  <div
-                    class="df-lane"
-                    style={{ "--src-color": `var(--src-${id})` } as Record<string, string>}
-                    title={`${SOURCE_LABELS[id] ?? id}: ${v().done} saved · ${v().inflight} in flight`}
-                  >
-                    <Show when={v().inflight > 0}>
-                      <div
-                        class="df-lane-bar inflight"
-                        style={{
-                          height: `${(v().inflight / max) * 100}%`,
-                          "margin-bottom": "1px",
-                        }}
-                      />
-                    </Show>
+              <For each={settings.selectedSources}>
+                {(id) => {
+                  const v = () => perSource()[id] ?? { done: 0, inflight: 0 };
+                  const max = laneMax();
+                  return (
                     <div
-                      class="df-lane-bar"
-                      style={{ height: `${(v().done / max) * 100}%` }}
-                    />
-                  </div>
-                );
-              }}</For>
+                      class="df-lane"
+                      style={{ "--src-color": `var(--src-${id})` } as Record<string, string>}
+                      title={`${SOURCE_LABELS[id] ?? id}: ${v().done} saved · ${v().inflight} in flight`}
+                    >
+                      <Show when={v().inflight > 0}>
+                        <div
+                          class="df-lane-bar inflight"
+                          style={{
+                            height: `${(v().inflight / max) * 100}%`,
+                            "margin-bottom": "1px",
+                          }}
+                        />
+                      </Show>
+                      <div class="df-lane-bar" style={{ height: `${(v().done / max) * 100}%` }} />
+                    </div>
+                  );
+                }}
+              </For>
             </div>
           </div>
         </div>
@@ -278,10 +279,7 @@ export default function RunCard() {
       {/* Recent completions — layout flips between stacked (default) and a
           two-column split based on settings.streamLayout. */}
       <Show when={rs().completed.length > 0 || Object.keys(rs().inFlight).length > 0}>
-        <div
-          class="df-stream"
-          classList={{ "df-stream-split": settings.streamLayout === "split" }}
-        >
+        <div class="df-stream" classList={{ "df-stream-split": settings.streamLayout === "split" }}>
           <Show when={Object.keys(rs().inFlight).length > 0}>
             <div class="df-stream-section">
               <div class="df-stream-label">
@@ -290,32 +288,37 @@ export default function RunCard() {
                   ({Object.keys(rs().inFlight).length})
                 </span>
               </div>
-              <For each={Object.values(rs().inFlight)}>{(item) => {
-                const pct = () => item.total > 0
-                  ? Math.round((item.downloaded / item.total) * 100)
-                  : 0;
-                return (
-                  <div
-                    class="df-doc in-flight"
-                    style={{ "--src-color": `var(--src-${item.source.replace(/-/g, "_").replace("meta_search/", "")})` } as Record<string, string>}
-                  >
-                    <span class="df-doc-source">{SOURCE_LABELS[item.source] ?? item.source}</span>
-                    <div class="df-doc-main">
-                      <div class="df-doc-title">{item.title}</div>
-                      <div class="df-doc-progress">
-                        <div class="df-progress-track">
-                          <div class="df-progress-fill" style={{ width: `${pct()}%` }} />
+              <For each={Object.values(rs().inFlight)}>
+                {(item) => {
+                  const pct = () =>
+                    item.total > 0 ? Math.round((item.downloaded / item.total) * 100) : 0;
+                  return (
+                    <div
+                      class="df-doc in-flight"
+                      style={
+                        {
+                          "--src-color": `var(--src-${item.source.replace(/-/g, "_").replace("meta_search/", "")})`,
+                        } as Record<string, string>
+                      }
+                    >
+                      <span class="df-doc-source">{SOURCE_LABELS[item.source] ?? item.source}</span>
+                      <div class="df-doc-main">
+                        <div class="df-doc-title">{item.title}</div>
+                        <div class="df-doc-progress">
+                          <div class="df-progress-track">
+                            <div class="df-progress-fill" style={{ width: `${pct()}%` }} />
+                          </div>
+                          <span class="df-doc-bytes">
+                            {item.total > 0
+                              ? `${formatBytes(item.downloaded)} / ${formatBytes(item.total)}`
+                              : formatBytes(item.downloaded)}
+                          </span>
                         </div>
-                        <span class="df-doc-bytes">
-                          {item.total > 0
-                            ? `${formatBytes(item.downloaded)} / ${formatBytes(item.total)}`
-                            : formatBytes(item.downloaded)}
-                        </span>
                       </div>
                     </div>
-                  </div>
-                );
-              }}</For>
+                  );
+                }}
+              </For>
             </div>
           </Show>
 
@@ -327,25 +330,31 @@ export default function RunCard() {
                   ({rs().completed.length})
                 </span>
               </div>
-              <For each={rs().completed.slice(-30).reverse()}>{(item) => (
-                <div
-                  class="df-doc"
-                  style={{ "--src-color": `var(--src-${item.source.replace(/-/g, "_").replace("meta_search/", "")})` } as Record<string, string>}
-                >
-                  <span class="df-doc-source">{SOURCE_LABELS[item.source] ?? item.source}</span>
-                  <div class="df-doc-main">
-                    <div class="df-doc-title">{item.title}</div>
-                  </div>
-                  <span
-                    class="df-doc-status"
-                    classList={{ ok: item.status === "done", bad: item.status === "failed" }}
+              <For each={rs().completed.slice(-30).reverse()}>
+                {(item) => (
+                  <div
+                    class="df-doc"
+                    style={
+                      {
+                        "--src-color": `var(--src-${item.source.replace(/-/g, "_").replace("meta_search/", "")})`,
+                      } as Record<string, string>
+                    }
                   >
-                    <Show when={item.status === "done"} fallback={item.error ?? "failed"}>
-                      saved
-                    </Show>
-                  </span>
-                </div>
-              )}</For>
+                    <span class="df-doc-source">{SOURCE_LABELS[item.source] ?? item.source}</span>
+                    <div class="df-doc-main">
+                      <div class="df-doc-title">{item.title}</div>
+                    </div>
+                    <span
+                      class="df-doc-status"
+                      classList={{ ok: item.status === "done", bad: item.status === "failed" }}
+                    >
+                      <Show when={item.status === "done"} fallback={item.error ?? "failed"}>
+                        saved
+                      </Show>
+                    </span>
+                  </div>
+                )}
+              </For>
             </div>
           </Show>
         </div>

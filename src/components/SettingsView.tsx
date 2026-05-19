@@ -110,16 +110,12 @@ export default function SettingsView() {
           <section class="df-section">
             <h2>Local Search Engine</h2>
             <p class="hint">
-              Document Finder ships its own SearXNG-compatible search server
-              built into the app. No Docker, no Python, no setup. Verify it's
-              running or override with a remote SearXNG instance.
+              Document Finder ships its own SearXNG-compatible search server built into the app. No
+              Docker, no Python, no setup. Verify it's running or override with a remote SearXNG
+              instance.
             </p>
             <div style={{ display: "flex", "flex-direction": "column", gap: "var(--pad-4)" }}>
-              <button
-                class="df-btn"
-                onClick={handleSetupSearx}
-                disabled={settingUpSearx()}
-              >
+              <button class="df-btn" onClick={handleSetupSearx} disabled={settingUpSearx()}>
                 <Show when={settingUpSearx()} fallback={<Server size={14} />}>
                   <Loader2 size={14} class="spin" />
                 </Show>
@@ -139,8 +135,8 @@ export default function SettingsView() {
                   }}
                 />
                 <span class="help">
-                  Leave blank for the embedded server. Override only with a
-                  remote SearXNG you control.
+                  Leave blank for the embedded server. Override only with a remote SearXNG you
+                  control.
                 </span>
               </div>
 
@@ -150,15 +146,19 @@ export default function SettingsView() {
                   <div class="df-banner-body">
                     <strong>Local SearXNG is running.</strong>
                     <Show when={searxResult()}>
-                      <pre style={{
-                        margin: "6px 0 0",
-                        "max-height": "96px",
-                        overflow: "auto",
-                        "white-space": "pre-wrap",
-                        "font-family": "var(--font-mono)",
-                        "font-size": "10px",
-                        opacity: 0.85,
-                      }}>{searxResult()}</pre>
+                      <pre
+                        style={{
+                          margin: "6px 0 0",
+                          "max-height": "96px",
+                          overflow: "auto",
+                          "white-space": "pre-wrap",
+                          "font-family": "var(--font-mono)",
+                          "font-size": "10px",
+                          opacity: 0.85,
+                        }}
+                      >
+                        {searxResult()}
+                      </pre>
                     </Show>
                   </div>
                 </div>

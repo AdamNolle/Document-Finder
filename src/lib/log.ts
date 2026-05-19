@@ -21,15 +21,7 @@
  */
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
-export type LogArea =
-  | "boot"
-  | "run"
-  | "settings"
-  | "library"
-  | "find"
-  | "tauri"
-  | "ui"
-  | "backend";
+export type LogArea = "boot" | "run" | "settings" | "library" | "find" | "tauri" | "ui" | "backend";
 
 export interface LogEntry {
   ts: number;
@@ -58,8 +50,8 @@ function append(entry: LogEntry) {
 // Devtools color codes for the prefix; the message itself stays default.
 const COLOR: Record<LogLevel, string> = {
   debug: "color:#6c7384",
-  info:  "color:#2549c9",
-  warn:  "color:#b4861e;font-weight:bold",
+  info: "color:#2549c9",
+  warn: "color:#b4861e;font-weight:bold",
   error: "color:#a13a2a;font-weight:bold",
 };
 
@@ -73,17 +65,20 @@ function emit(level: LogLevel, area: LogArea, msg: string, data?: unknown) {
 
   // console.debug doesn't exist on all hosts; fall back to log.
   const fn =
-    level === "debug" ? (console.debug ?? console.log)
-    : level === "info" ? console.info
-    : level === "warn" ? console.warn
-    : console.error;
+    level === "debug"
+      ? (console.debug ?? console.log)
+      : level === "info"
+        ? console.info
+        : level === "warn"
+          ? console.warn
+          : console.error;
   fn(...(args as []));
 }
 
 export const log = {
   debug: (area: LogArea, msg: string, data?: unknown) => emit("debug", area, msg, data),
-  info:  (area: LogArea, msg: string, data?: unknown) => emit("info",  area, msg, data),
-  warn:  (area: LogArea, msg: string, data?: unknown) => emit("warn",  area, msg, data),
+  info: (area: LogArea, msg: string, data?: unknown) => emit("info", area, msg, data),
+  warn: (area: LogArea, msg: string, data?: unknown) => emit("warn", area, msg, data),
   error: (area: LogArea, msg: string, data?: unknown) => emit("error", area, msg, data),
 
   /// Snapshot of the last N entries (most recent at end). Default: full
@@ -124,9 +119,8 @@ export function installGlobalHandlers() {
     });
   });
   window.addEventListener("unhandledrejection", (e) => {
-    const reason = e.reason instanceof Error
-      ? `${e.reason.name}: ${e.reason.message}`
-      : String(e.reason);
+    const reason =
+      e.reason instanceof Error ? `${e.reason.name}: ${e.reason.message}` : String(e.reason);
     log.error("ui", `unhandled promise rejection: ${reason}`, e.reason);
   });
 }

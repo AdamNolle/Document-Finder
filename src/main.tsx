@@ -27,10 +27,7 @@ applyAttrs();
 const NOISY = new Set(["download_progress", "found"]);
 listenAll((ev) => {
   if (!NOISY.has(ev.type)) {
-    const lvl =
-      ev.type === "error" ? "error"
-      : ev.type === "source_error" ? "warn"
-      : "debug";
+    const lvl = ev.type === "error" ? "error" : ev.type === "source_error" ? "warn" : "debug";
     log[lvl]("backend", `event ${ev.type}`, ev.payload);
   }
   runStore.apply(ev);

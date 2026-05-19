@@ -15,12 +15,8 @@ export default function LibraryView() {
   const [loadTick, setLoadTick] = createSignal(0);
 
   const libraries = createMemo(() => uiStore.knownLibraries);
-  const totalDocs = createMemo(() =>
-    libraries().reduce((s, l) => s + l.n_docs, 0),
-  );
-  const totalBytes = createMemo(() =>
-    libraries().reduce((s, l) => s + l.size_bytes, 0),
-  );
+  const totalDocs = createMemo(() => libraries().reduce((s, l) => s + l.n_docs, 0));
+  const totalBytes = createMemo(() => libraries().reduce((s, l) => s + l.size_bytes, 0));
 
   createEffect(() => {
     const _tick = loadTick();
@@ -33,7 +29,8 @@ export default function LibraryView() {
     setLoading(true);
     setError(null);
 
-    api.listLibraries(root)
+    api
+      .listLibraries(root)
       .then((libs) => {
         if (!cancelled) {
           uiStore.setKnownLibraries(libs);
@@ -48,7 +45,9 @@ export default function LibraryView() {
           log.error("library", "listLibraries failed", e);
         }
       });
-    onCleanup(() => { cancelled = true; });
+    onCleanup(() => {
+      cancelled = true;
+    });
   });
 
   async function handleExport(lib: LibraryInfo, e: MouseEvent) {
@@ -102,22 +101,20 @@ export default function LibraryView() {
             <div class="df-banner-body">
               <strong>Export failed.</strong> {exportError()}
             </div>
-            <button
-              class="df-banner-x"
-              onClick={() => setExportError(null)}
-              aria-label="Dismiss"
-            >
+            <button class="df-banner-x" onClick={() => setExportError(null)} aria-label="Dismiss">
               <X size={12} />
             </button>
           </div>
         </Show>
 
         <Show when={loading()}>
-          <div style={{
-            display: "flex",
-            "justify-content": "center",
-            padding: "var(--pad-9) 0",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              "justify-content": "center",
+              padding: "var(--pad-9) 0",
+            }}
+          >
             <Loader2 size={24} class="spin" style={{ color: "var(--ink-3)" }} />
           </div>
         </Show>
@@ -145,8 +142,7 @@ export default function LibraryView() {
             </div>
             <h3 class="df-empty-title">No libraries yet</h3>
             <p class="df-empty-sub">
-              Run a search from Discover and saved documents will land here as a
-              library collection.
+              Run a search from Discover and saved documents will land here as a library collection.
             </p>
             <button class="df-btn accent" onClick={() => uiStore.setView("find")}>
               Go to Discover
@@ -156,56 +152,62 @@ export default function LibraryView() {
 
         <Show when={!loading() && libraries().length > 0}>
           <div class="df-libgrid">
-            <For each={libraries()}>{(lib) => {
-              const isActive = () => uiStore.activeLibrary?.path === lib.path;
-              const isExporting = () => exportingPath() === lib.path;
-              return (
-                <div
-                  class="df-libcard"
-                  classList={{ active: isActive() }}
-                  role="button"
-                  tabindex="0"
-                  onClick={() => uiStore.setActiveLibrary(lib)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      uiStore.setActiveLibrary(lib);
-                    }
-                  }}
-                >
-                  <div class="df-libcard-head">
-                    <span class="df-libcard-q" title={lib.query ?? lib.name}>
-                      {lib.query ?? lib.name}
-                    </span>
+            <For each={libraries()}>
+              {(lib) => {
+                const isActive = () => uiStore.activeLibrary?.path === lib.path;
+                const isExporting = () => exportingPath() === lib.path;
+                return (
+                  <div
+                    class="df-libcard"
+                    classList={{ active: isActive() }}
+                    role="button"
+                    tabindex="0"
+                    onClick={() => uiStore.setActiveLibrary(lib)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        uiStore.setActiveLibrary(lib);
+                      }
+                    }}
+                  >
+                    <div class="df-libcard-head">
+                      <span class="df-libcard-q" title={lib.query ?? lib.name}>
+                        {lib.query ?? lib.name}
+                      </span>
+                    </div>
+                    <div class="df-libcard-meta">
+                      <span>
+                        <strong>{lib.n_docs}</strong> docs
+                      </span>
+                      <span>
+                        <strong>{formatBytes(lib.size_bytes)}</strong>
+                      </span>
+                    </div>
+                    <div class="df-libcard-actions" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        class="df-btn sm"
+                        onClick={(e) => handleExport(lib, e)}
+                        disabled={isExporting()}
+                      >
+                        <Show when={isExporting()} fallback={<Archive size={12} />}>
+                          <Loader2 size={12} class="spin" />
+                        </Show>
+                        Export ZIP
+                      </button>
+                      <button
+                        class="df-btn sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          api.revealInFinder(lib.path);
+                        }}
+                      >
+                        <FolderOpen size={12} /> Show
+                      </button>
+                    </div>
                   </div>
-                  <div class="df-libcard-meta">
-                    <span><strong>{lib.n_docs}</strong> docs</span>
-                    <span><strong>{formatBytes(lib.size_bytes)}</strong></span>
-                  </div>
-                  <div class="df-libcard-actions" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      class="df-btn sm"
-                      onClick={(e) => handleExport(lib, e)}
-                      disabled={isExporting()}
-                    >
-                      <Show when={isExporting()} fallback={<Archive size={12} />}>
-                        <Loader2 size={12} class="spin" />
-                      </Show>
-                      Export ZIP
-                    </button>
-                    <button
-                      class="df-btn sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        api.revealInFinder(lib.path);
-                      }}
-                    >
-                      <FolderOpen size={12} /> Show
-                    </button>
-                  </div>
-                </div>
-              );
-            }}</For>
+                );
+              }}
+            </For>
           </div>
         </Show>
       </div>
