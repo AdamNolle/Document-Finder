@@ -1,11 +1,8 @@
-@import "tailwindcss";
-
 /* =====================================================================
-   Document Finder v3.1 — Editorial design tokens + components
-   Ported from the Claude Design bundle (Document Finder.html + styles.css).
-   We keep the Tailwind import for any utility-class leftovers but ship the
-   real design as raw CSS so theme/accent/density can flip via data-attrs
-   on <body> without rebuilding the bundle.
+   Document Finder — Editorial design tokens + components
+   The design lives as plain CSS so theme/accent/density can flip via
+   data-attrs on <body> without rebuilding the bundle. Tailwind has been
+   removed — no utility classes are used anywhere in the app.
    ===================================================================== */
 
 :root {
