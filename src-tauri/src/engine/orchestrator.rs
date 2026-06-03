@@ -776,7 +776,9 @@ pub async fn run_pipeline(
         // First use of semantic rerank: load/download the model in the
         // background so this run doesn't stall on a cold ~60 MB download.
         // Semantic rerank engages automatically on the next search once ready.
-        crate::ai::embeddings::warm_in_background(app.clone());
+        // Use the *implicit* warm so a search never retries a worker that has
+        // already crashed this session (no crash loop).
+        crate::ai::embeddings::warm_in_background_implicit(app.clone());
         emit_stage(
             &app,
             "semantic_rerank",

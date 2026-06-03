@@ -430,6 +430,24 @@ export default function SettingsView() {
                     {warming() ? "Downloading…" : "Download now"}
                   </button>
                 </Match>
+                <Match when={modelsStore.embeddingState === "failed"}>
+                  <AlertCircle size={12} style={{ color: "var(--bad)" }} />
+                  <span style={{ "font-weight": 500 }}>Embedding model</span>
+                  <span style={{ color: "var(--bad)" }}>
+                    · couldn't load — semantic rerank unavailable (see logs)
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  <button
+                    class="df-btn sm"
+                    disabled={warming()}
+                    onClick={() => void handleWarmEmbedding()}
+                  >
+                    <Show when={warming()} fallback={<RefreshCw size={12} />}>
+                      <Loader2 size={12} class="spin" />
+                    </Show>
+                    {warming() ? "Retrying…" : "Try again"}
+                  </button>
+                </Match>
               </Switch>
             </div>
 
